@@ -30,8 +30,8 @@ public class AppDbContext : DbContext
                 .HasColumnName("status")
                 .HasConversion<string>()
                 .IsRequired();
-            e.Property(o => o.CreatedAt).HasColumnName("created_at");
-            e.Property(o => o.UpdatedAt).HasColumnName("updated_at");
+            e.Property(o => o.CreatedAt).HasColumnName("createdAt");
+            e.Property(o => o.UpdatedAt).HasColumnName("updatedAt");
             e.HasIndex(o => o.Slug).IsUnique();
         });
 
@@ -41,16 +41,16 @@ public class AppDbContext : DbContext
             e.ToTable("users");
             e.HasKey(u => u.Id);
             e.Property(u => u.Id).HasColumnName("id");
-            e.Property(u => u.FirebaseUid).HasColumnName("firebase_uid").IsRequired();
+            e.Property(u => u.FirebaseUid).HasColumnName("firebaseUid").IsRequired();
             e.Property(u => u.Email).HasColumnName("email").IsRequired();
-            e.Property(u => u.DisplayName).HasColumnName("display_name");
+            e.Property(u => u.DisplayName).HasColumnName("displayName");
             e.Property(u => u.Role)
                 .HasColumnName("role")
                 .HasConversion<string>()
                 .IsRequired();
-            e.Property(u => u.OrganizationId).HasColumnName("organization_id");
-            e.Property(u => u.CreatedAt).HasColumnName("created_at");
-            e.Property(u => u.UpdatedAt).HasColumnName("updated_at");
+            e.Property(u => u.OrganizationId).HasColumnName("organizationId");
+            e.Property(u => u.CreatedAt).HasColumnName("createdAt");
+            e.Property(u => u.UpdatedAt).HasColumnName("updatedAt");
             e.HasIndex(u => u.FirebaseUid).IsUnique();
             e.HasIndex(u => u.Email).IsUnique();
             e.HasIndex(u => u.OrganizationId);
@@ -73,10 +73,10 @@ public class AppDbContext : DbContext
                 .HasColumnName("status")
                 .HasConversion<string>()
                 .IsRequired();
-            e.Property(a => a.AssignedTo).HasColumnName("assigned_to");
-            e.Property(a => a.OrganizationId).HasColumnName("organization_id");
-            e.Property(a => a.CreatedAt).HasColumnName("created_at");
-            e.Property(a => a.UpdatedAt).HasColumnName("updated_at");
+            e.Property(a => a.AssignedTo).HasColumnName("assignedTo");
+            e.Property(a => a.OrganizationId).HasColumnName("organizationId");
+            e.Property(a => a.CreatedAt).HasColumnName("createdAt");
+            e.Property(a => a.UpdatedAt).HasColumnName("updatedAt");
             e.HasIndex(a => a.SKU).IsUnique();
             e.HasIndex(a => a.OrganizationId);
             e.HasOne(a => a.Organization)
@@ -92,8 +92,8 @@ public class AppDbContext : DbContext
             e.HasKey(al => al.Id);
             e.Property(al => al.Id).HasColumnName("id");
             e.Property(al => al.Action).HasColumnName("action").IsRequired();
-            e.Property(al => al.ActorId).HasColumnName("actor_id");
-            e.Property(al => al.AssetId).HasColumnName("asset_id");
+            e.Property(al => al.ActorId).HasColumnName("actorId");
+            e.Property(al => al.AssetId).HasColumnName("assetId");
             e.Property(al => al.Changes)
                 .HasColumnName("changes")
                 .HasColumnType("jsonb");
@@ -122,11 +122,11 @@ public class AppDbContext : DbContext
                 .HasColumnName("role")
                 .HasConversion<string>()
                 .IsRequired();
-            e.Property(i => i.OrganizationId).HasColumnName("organization_id");
+            e.Property(i => i.OrganizationId).HasColumnName("organizationId");
             e.Property(i => i.Token).HasColumnName("token").IsRequired();
-            e.Property(i => i.ExpiresAt).HasColumnName("expires_at");
-            e.Property(i => i.AcceptedAt).HasColumnName("accepted_at");
-            e.Property(i => i.CreatedAt).HasColumnName("created_at");
+            e.Property(i => i.ExpiresAt).HasColumnName("expiresAt");
+            e.Property(i => i.AcceptedAt).HasColumnName("acceptedAt");
+            e.Property(i => i.CreatedAt).HasColumnName("createdAt");
             e.HasIndex(i => i.Token).IsUnique();
             e.HasIndex(i => i.OrganizationId);
             e.HasOne(i => i.Organization)
