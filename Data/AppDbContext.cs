@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
             e.Property(o => o.Slug).HasColumnName("slug").IsRequired();
             e.Property(o => o.Status)
                 .HasColumnName("status")
+                .HasConversion<string>()
                 .IsRequired();
             e.Property(o => o.CreatedAt).HasColumnName("createdAt");
             e.Property(o => o.UpdatedAt).HasColumnName("updatedAt");
@@ -47,6 +48,7 @@ public class AppDbContext : DbContext
             e.Property(u => u.DisplayName).HasColumnName("displayName");
             e.Property(u => u.Role)
                 .HasColumnName("role")
+                .HasConversion<string>()
                 .IsRequired();
             e.Property(u => u.OrganizationId).HasColumnName("organizationId");
             e.Property(u => u.CreatedAt).HasColumnName("createdAt");
@@ -71,6 +73,7 @@ public class AppDbContext : DbContext
             e.Property(a => a.Description).HasColumnName("description");
             e.Property(a => a.Status)
                 .HasColumnName("status")
+                .HasConversion<string>()
                 .IsRequired();
             e.Property(a => a.AssignedTo).HasColumnName("assignedTo");
             e.Property(a => a.OrganizationId).HasColumnName("organizationId");
@@ -122,6 +125,7 @@ public class AppDbContext : DbContext
             e.Property(i => i.Email).HasColumnName("email").IsRequired();
             e.Property(i => i.Role)
                 .HasColumnName("role")
+                .HasConversion<string>()
                 .IsRequired();
             e.Property(i => i.OrganizationId).HasColumnName("organizationId");
             e.Property(i => i.Token).HasColumnName("token").IsRequired();
