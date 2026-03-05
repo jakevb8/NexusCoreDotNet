@@ -99,9 +99,12 @@ var dbConnStr = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("DefaultConnection is not configured");
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(dbConnStr);
-dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.OrgStatus>("OrgStatus");
-dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.Role>("Role");
-dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.AssetStatus>("AssetStatus");
+// Use NpgsqlNullNameTranslator so enum member names are sent as-is (UPPERCASE),
+// matching the values Prisma created in PostgreSQL (ACTIVE, PENDING, VIEWER, etc.)
+var passthrough = new Npgsql.NameTranslation.NpgsqlNullNameTranslator();
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.OrgStatus>("OrgStatus", passthrough);
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.Role>("Role", passthrough);
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.AssetStatus>("AssetStatus", passthrough);
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
