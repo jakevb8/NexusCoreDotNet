@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NexusCoreDotNet.Data.Entities;
@@ -6,7 +7,7 @@ using NexusCoreDotNet.Enums;
 
 namespace NexusCoreDotNet.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : DbContext, IDataProtectionKeyContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -15,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Invite> Invites => Set<Invite>();
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -3,6 +3,7 @@ using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -93,24 +94,24 @@ if (FirebaseApp.DefaultInstance == null)
 }
 
 // ── Database ──────────────────────────────────────────────────────────────────
-// Register .NET enums as their native PostgreSQL enum types (created by Prisma).
-// Npgsql requires this mapping before the data source is built.
 var dbConnStr = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("DefaultConnection is not configured");
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(dbConnStr);
-// Use NpgsqlNullNameTranslator so enum member names are sent as-is (UPPERCASE),
-// matching the values Prisma created in PostgreSQL (ACTIVE, PENDING, VIEWER, etc.)
-var passthrough = new Npgsql.NameTranslation.NpgsqlNullNameTranslator();
-dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.OrgStatus>("OrgStatus", passthrough);
-dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.Role>("Role", passthrough);
-dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.AssetStatus>("AssetStatus", passthrough);
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(dataSource, o => o.EnableRetryOnFailure(3));
 });
+
+// ── DataProtection ────────────────────────────────────────────────────────────
+// Persist keys to the database so they survive container restarts/redeployments.
+// Without this, a new key ring is generated on every startup and existing session
+// cookies / antiforgery tokens can no longer be decrypted.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<AppDbContext>()
+    .SetApplicationName("NexusCoreDotNet");
 
 // ── Caching ───────────────────────────────────────────────────────────────────
 builder.Services.AddMemoryCache();
