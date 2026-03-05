@@ -1,0 +1,306 @@
+@page
+@model NexusCoreDotNet.Pages.Team.IndexModel
+@{
+    ViewData["Title"] = "Team";
+}
+
+<div class="page-header d-flex align-items-start justify-content-between">
+    <div>
+        <h2>Team</h2>
+        <p>Manage your organization's members and invitations</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#inviteModal">
+        <i class="bi bi-person-plus me-1"></i>Invite Member
+    </button>
+</div>
+
+<!-- Members -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header">
+        <h6 class="fw-semibold mb-0">Members <span class="badge bg-secondary ms-1">@Model.Members.Count</span></h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Member</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var member in Model.Members)
+                    {
+                        var isSelf = member.Id == Model.CurrentUserId;
+                        var isSuperAdmin = member.Role == NexusCoreDotNet.Enums.Role.SUPERADMIN;
+                        <tr>
+                            <td>
+                                <div class="fw-medium">@(member.DisplayName ?? member.Email)</div>
+                                @if (member.DisplayName != null)
+                                {
+                                    <small class="text-muted">@member.Email</small>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge badge-@member.Role.ToString().ToLower() rounded-pill px-3">
+                                    @member.Role.ToString().Replace("_", " ")
+                                </span>
+                            </td>
+                            <td class="text-muted" style="font-size:.85rem;">@member.CreatedAt.ToString("MMM d, yyyy")</td>
+                            <td class="text-end">
+                                @if (!isSelf && !isSuperAdmin)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 me-1"
+                                            data-bs-toggle="modal" data-bs-target="#roleModal"
+                                            data-user-id="@member.Id"
+                                            data-user-name="@(member.DisplayName ?? member.Email)"
+                                            data-user-role="@member.Role.ToString()">
+                                        <i class="bi bi-shield"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                                            data-bs-toggle="modal" data-bs-target="#removeModal"
+                                            data-user-id="@member.Id"
+                                            data-user-name="@(member.DisplayName ?? member.Email)">
+                                        <i class="bi bi-person-dash"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted" style="font-size:.8rem;">
+                                        @(isSelf ? "You" : "Protected")
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Invites -->
+@if (Model.Invites.Count > 0)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-header">
+            <h6 class="fw-semibold mb-0">Pending Invitations <span class="badge bg-warning text-dark ms-1">@Model.Invites.Count</span></h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var invite in Model.Invites)
+                        {
+                            var expired = invite.ExpiresAt < DateTime.UtcNow;
+                            var accepted = invite.AcceptedAt.HasValue;
+                            <tr>
+                                <td>@invite.Email</td>
+                                <td>
+                                    <span class="badge badge-@invite.Role.ToString().ToLower() rounded-pill px-3">
+                                        @invite.Role.ToString().Replace("_", " ")
+                                    </span>
+                                </td>
+                                <td class="text-muted" style="font-size:.85rem;">
+                                    @invite.ExpiresAt.ToString("MMM d, yyyy")
+                                </td>
+                                <td>
+                                    @if (accepted)
+                                    {
+                                        <span class="badge bg-success rounded-pill px-3">Accepted</span>
+                                    }
+                                    else if (expired)
+                                    {
+                                        <span class="badge bg-danger rounded-pill px-3">Expired</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark rounded-pill px-3">Pending</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 me-1"
+                                            onclick="copyInviteLink('@invite.Token')" title="Copy invite link">
+                                        <i class="bi bi-link-45deg"></i>
+                                    </button>
+                                    @if (!accepted)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                                                data-bs-toggle="modal" data-bs-target="#deleteInviteModal"
+                                                data-invite-id="@invite.Id"
+                                                data-invite-email="@invite.Email">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Invite Modal -->
+<div class="modal fade" id="inviteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+        <div class="modal-content rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-semibold">Invite Team Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @if (!string.IsNullOrEmpty(Model.InviteError))
+                {
+                    <div class="alert alert-danger mb-3 py-2" style="font-size:.875rem;">@Model.InviteError</div>
+                }
+                <form method="post" asp-page-handler="Invite">
+                    <div class="mb-3">
+                        <label class="form-label fw-medium" style="font-size:.875rem;">Email Address</label>
+                        <input name="InviteEmail" type="email" class="form-control" placeholder="colleague@example.com" required/>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-medium" style="font-size:.875rem;">Role</label>
+                        <select name="InviteRole" class="form-select">
+                            <option value="VIEWER">Viewer</option>
+                            <option value="ASSET_MANAGER">Asset Manager</option>
+                            <option value="ORG_MANAGER">Org Manager</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-send me-2"></i>Send Invitation
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Modal -->
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:380px;">
+        <div class="modal-content rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-semibold">Change Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" style="font-size:.875rem;">
+                    Update role for <strong id="roleUserName"></strong>
+                </p>
+                <form method="post" asp-page-handler="UpdateRole">
+                    <input type="hidden" name="TargetUserId" id="roleUserId"/>
+                    <div class="mb-4">
+                        <select name="NewRole" id="roleSelect" class="form-select">
+                            <option value="VIEWER">Viewer</option>
+                            <option value="ASSET_MANAGER">Asset Manager</option>
+                            <option value="ORG_MANAGER">Org Manager</option>
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill">Save</button>
+                        <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Modal -->
+<div class="modal fade" id="removeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+        <div class="modal-content rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-semibold">Remove Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="font-size:.9rem;">
+                    Remove <strong id="removeUserName"></strong> from your organization? They will lose access immediately.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" asp-page-handler="Remove" class="m-0">
+                    <input type="hidden" name="TargetUserId" id="removeUserId"/>
+                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Invite Modal -->
+<div class="modal fade" id="deleteInviteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:380px;">
+        <div class="modal-content rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-semibold">Delete Invitation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="font-size:.9rem;">
+                    Cancel invitation for <strong id="deleteInviteEmail"></strong>?
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" asp-page-handler="DeleteInvite" class="m-0">
+                    <input type="hidden" name="InviteId" id="deleteInviteId"/>
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="copy-toast" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999;display:none;">
+    <div class="toast show bg-dark text-white" role="alert">
+        <div class="toast-body"><i class="bi bi-check2 me-2"></i>Invite link copied!</div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('roleModal')?.addEventListener('show.bs.modal', e => {
+        const btn = e.relatedTarget;
+        document.getElementById('roleUserId').value = btn.dataset.userId;
+        document.getElementById('roleUserName').textContent = btn.dataset.userName;
+        document.getElementById('roleSelect').value = btn.dataset.userRole;
+    });
+
+    document.getElementById('removeModal')?.addEventListener('show.bs.modal', e => {
+        const btn = e.relatedTarget;
+        document.getElementById('removeUserId').value = btn.dataset.userId;
+        document.getElementById('removeUserName').textContent = btn.dataset.userName;
+    });
+
+    document.getElementById('deleteInviteModal')?.addEventListener('show.bs.modal', e => {
+        const btn = e.relatedTarget;
+        document.getElementById('deleteInviteId').value = btn.dataset.inviteId;
+        document.getElementById('deleteInviteEmail').textContent = btn.dataset.inviteEmail;
+    });
+
+    function copyInviteLink(token) {
+        const url = `${window.location.origin}/AcceptInvite?token=${token}`;
+        navigator.clipboard.writeText(url).then(() => {
+            const toast = document.getElementById('copy-toast');
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 2500);
+        });
+    }
+</script>
+}

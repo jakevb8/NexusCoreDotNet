@@ -1,0 +1,231 @@
+@page
+@model NexusCoreDotNet.Pages.Assets.IndexModel
+@{
+    ViewData["Title"] = "Assets";
+}
+
+<div class="page-header d-flex align-items-start justify-content-between">
+    <div>
+        <h2>Assets</h2>
+        <p>Manage your organization's assets</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/Assets/SampleCsv" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download me-1"></i>Sample CSV
+        </a>
+        @if (Model.IsManager)
+        {
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
+                <i class="bi bi-upload me-1"></i>Import CSV
+            </button>
+            <a href="/Assets/Create" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus me-1"></i>Add Asset
+            </a>
+        }
+    </div>
+</div>
+
+@if (Model.ImportResult != null)
+{
+    <div class="alert alert-info alert-dismissible mb-3">
+        <strong>Import complete:</strong> @Model.ImportResult.Created created,
+        @Model.ImportResult.Skipped skipped.
+        @if (Model.ImportResult.LimitReached)
+        {
+            <span class="text-danger fw-medium"> Trial limit (100) reached.</span>
+        }
+        @if (Model.ImportResult.Errors.Count > 0)
+        {
+            <span> @Model.ImportResult.Errors.Count error(s).</span>
+        }
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Search -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="d-flex gap-2">
+            <input name="search" class="form-control form-control-sm" placeholder="Search by name or SKU…"
+                   value="@Model.Search" style="max-width:320px;"/>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-search me-1"></i>Search
+            </button>
+            @if (!string.IsNullOrEmpty(Model.Search))
+            {
+                <a href="/Assets" class="btn btn-outline-secondary btn-sm">Clear</a>
+            }
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span class="fw-semibold">
+            @Model.Total asset@(Model.Total == 1 ? "" : "s")
+            @if (!string.IsNullOrEmpty(Model.Search))
+            {
+                <span class="text-muted fw-normal"> matching "@Model.Search"</span>
+            }
+        </span>
+        <span class="text-muted" style="font-size:.8rem;">Page @Model.Page of @Model.TotalPages</span>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Assets.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-box-seam fs-1 d-block mb-2"></i>
+                <p class="mb-0">No assets found</p>
+                @if (Model.IsManager)
+                {
+                    <a href="/Assets/Create" class="btn btn-primary btn-sm mt-2">Add your first asset</a>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>SKU</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                            <th>Created</th>
+                            @if (Model.IsManager)
+                            {
+                                <th class="text-end">Actions</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var asset in Model.Assets)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="fw-medium">@asset.Name</span>
+                                    @if (!string.IsNullOrEmpty(asset.Description))
+                                    {
+                                        <br/><small class="text-muted">@asset.Description</small>
+                                    }
+                                </td>
+                                <td><code class="text-secondary">@asset.SKU</code></td>
+                                <td>
+                                    <span class="badge badge-@asset.Status.ToString().ToLower().Replace("_", "_") rounded-pill px-3">
+                                        @asset.Status.ToString().Replace("_", " ")
+                                    </span>
+                                </td>
+                                <td class="text-muted" style="font-size:.875rem;">@(asset.AssignedTo ?? "—")</td>
+                                <td class="text-muted" style="font-size:.8rem;">@asset.CreatedAt.ToString("MMM d, yyyy")</td>
+                                @if (Model.IsManager)
+                                {
+                                    <td class="text-end">
+                                        <a href="/Assets/Edit/@asset.Id" class="btn btn-sm btn-outline-secondary py-0 me-1">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                                                data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                                data-asset-id="@asset.Id" data-asset-name="@asset.Name">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer bg-white d-flex align-items-center justify-content-between">
+            <small class="text-muted">Showing @((Model.Page - 1) * 20 + 1)–@(Math.Min(Model.Page * 20, Model.Total)) of @Model.Total</small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0 gap-1">
+                    @if (Model.Page > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link rounded" href="?page=@(Model.Page - 1)&search=@Model.Search">‹ Prev</a>
+                        </li>
+                    }
+                    @if (Model.Page < Model.TotalPages)
+                    {
+                        <li class="page-item">
+                            <a class="page-link rounded" href="?page=@(Model.Page + 1)&search=@Model.Search">Next ›</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+        <div class="modal-content rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-semibold">Delete Asset</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p class="text-muted" style="font-size:.9rem;">
+                    Are you sure you want to delete <strong id="deleteAssetName"></strong>?
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" asp-page-handler="Delete" class="m-0">
+                    <input type="hidden" name="id" id="deleteAssetId"/>
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+@if (Model.IsManager)
+{
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-semibold">Import Assets from CSV</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size:.875rem;">
+                        Upload a CSV file with columns: <code>Name, SKU, Description, Status</code>.
+                        Download the <a href="/Assets/SampleCsv">sample template</a> to get started.
+                    </p>
+                    <form method="post" asp-page-handler="Import" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <input type="file" name="csvFile" class="form-control" accept=".csv" required/>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-upload me-2"></i>Import
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+        deleteModal.addEventListener('show.bs.modal', e => {
+            const btn = e.relatedTarget;
+            document.getElementById('deleteAssetId').value = btn.dataset.assetId;
+            document.getElementById('deleteAssetName').textContent = btn.dataset.assetName;
+        });
+    }
+</script>
+}

@@ -1,0 +1,49 @@
+## .NET gitignore
+
+# Build artifacts
+bin/
+obj/
+out/
+publish/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Secrets / local settings
+appsettings.Development.json
+appsettings.Local.json
+*.pfx
+*.p12
+serviceaccount.json
+*service-account*.json
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Coverage
+coverage/
+TestResults/

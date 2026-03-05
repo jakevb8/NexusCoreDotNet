@@ -1,0 +1,51 @@
+@page
+@model NexusCoreDotNet.Pages.OnboardingModel
+@{
+    Layout = "_LoginLayout";
+    ViewData["Title"] = "Create Organization";
+}
+
+<h5 class="fw-semibold text-center mb-1">Create your organization</h5>
+<p class="text-muted text-center mb-4" style="font-size:.875rem;">Set up your workspace to get started</p>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger mb-3">@Model.ErrorMessage</div>
+}
+
+<form method="post">
+    <div class="mb-3">
+        <label for="OrgName" class="form-label fw-medium" style="font-size:.875rem;">Organization Name</label>
+        <input id="OrgName" name="OrgName" class="form-control" placeholder="Acme Corp" value="@Model.OrgName" required/>
+    </div>
+    <div class="mb-3">
+        <label for="OrgSlug" class="form-label fw-medium" style="font-size:.875rem;">Organization Slug</label>
+        <div class="input-group">
+            <span class="input-group-text text-muted" style="font-size:.85rem;">nexuscore.app/</span>
+            <input id="OrgSlug" name="OrgSlug" class="form-control" placeholder="acme-corp" value="@Model.OrgSlug" pattern="[a-z0-9\-]+" required/>
+        </div>
+        <div class="form-text">Lowercase letters, numbers, and hyphens only.</div>
+    </div>
+    <div class="mb-4">
+        <label for="DisplayName" class="form-label fw-medium" style="font-size:.875rem;">Your Display Name</label>
+        <input id="DisplayName" name="DisplayName" class="form-control" placeholder="Jane Doe" value="@Model.DisplayName"/>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 py-2 fw-medium">
+        <i class="bi bi-building me-2"></i>Create Organization
+    </button>
+</form>
+
+<div class="text-center mt-3">
+    <small class="text-muted">Already have an account? <a href="/Login" class="text-primary text-decoration-none fw-medium">Sign in</a></small>
+</div>
+
+<script>
+    document.getElementById('OrgName').addEventListener('input', function() {
+        const slug = this.value.toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim();
+        document.getElementById('OrgSlug').value = slug;
+    });
+</script>

@@ -1,0 +1,170 @@
+@page
+@model NexusCoreDotNet.Pages.Dashboard.IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="page-header">
+    <h2>Dashboard</h2>
+    <p>Overview of your organization's assets and activity</p>
+</div>
+
+@{
+    var stats = Model.Stats;
+}
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted" style="font-size:.8rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;">Total Assets</span>
+                    <span class="bg-primary bg-opacity-10 text-primary rounded-3 p-2"><i class="bi bi-box-seam fs-5"></i></span>
+                </div>
+                <div class="fw-bold" style="font-size:2rem;">@stats.TotalAssets</div>
+                <div class="text-muted mt-1" style="font-size:.8rem;">of 100 trial limit</div>
+                <div class="progress mt-2" style="height:4px;">
+                    <div class="progress-bar bg-primary" style="width:@(stats.TotalAssets)%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted" style="font-size:.8rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;">Utilization Rate</span>
+                    <span class="bg-success bg-opacity-10 text-success rounded-3 p-2"><i class="bi bi-graph-up fs-5"></i></span>
+                </div>
+                <div class="fw-bold" style="font-size:2rem;">@stats.UtilizationRate<span style="font-size:1rem;">%</span></div>
+                <div class="text-muted mt-1" style="font-size:.8rem;">assets currently in use</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted" style="font-size:.8rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;">In Use</span>
+                    <span class="bg-info bg-opacity-10 text-info rounded-3 p-2"><i class="bi bi-person-check fs-5"></i></span>
+                </div>
+                <div class="fw-bold" style="font-size:2rem;">@stats.InUse</div>
+                <div class="text-muted mt-1" style="font-size:.8rem;">assets assigned</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted" style="font-size:.8rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;">Team Members</span>
+                    <span class="bg-warning bg-opacity-10 text-warning rounded-3 p-2"><i class="bi bi-people fs-5"></i></span>
+                </div>
+                <div class="fw-bold" style="font-size:2rem;">@stats.TotalUsers</div>
+                <div class="text-muted mt-1" style="font-size:.8rem;">active members</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Chart -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pb-0">
+                <h6 class="fw-semibold mb-0">Asset Status Breakdown</h6>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="min-height:260px;">
+                @if (stats.TotalAssets == 0)
+                {
+                    <div class="text-center text-muted">
+                        <i class="bi bi-box-seam fs-1 d-block mb-2"></i>
+                        <p class="mb-0">No assets yet</p>
+                        <a href="/Assets/Create" class="btn btn-primary btn-sm mt-2">Add your first asset</a>
+                    </div>
+                }
+                else
+                {
+                    <canvas id="statusChart" width="200" height="200"></canvas>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Status table -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pb-0">
+                <h6 class="fw-semibold mb-0">Status Summary</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-available rounded-pill px-3">Available</span></td>
+                            <td class="fw-semibold">@stats.Available</td>
+                            <td class="text-muted" style="font-size:.85rem;">
+                                @(stats.TotalAssets > 0 ? $"{Math.Round((double)stats.Available / stats.TotalAssets * 100, 1)}%" : "—")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-in_use rounded-pill px-3">In Use</span></td>
+                            <td class="fw-semibold">@stats.InUse</td>
+                            <td class="text-muted" style="font-size:.85rem;">
+                                @(stats.TotalAssets > 0 ? $"{Math.Round((double)stats.InUse / stats.TotalAssets * 100, 1)}%" : "—")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-maintenance rounded-pill px-3">Maintenance</span></td>
+                            <td class="fw-semibold">@stats.Maintenance</td>
+                            <td class="text-muted" style="font-size:.85rem;">
+                                @(stats.TotalAssets > 0 ? $"{Math.Round((double)stats.Maintenance / stats.TotalAssets * 100, 1)}%" : "—")
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-retired rounded-pill px-3">Retired</span></td>
+                            <td class="fw-semibold">@stats.Retired</td>
+                            <td class="text-muted" style="font-size:.85rem;">
+                                @(stats.TotalAssets > 0 ? $"{Math.Round((double)stats.Retired / stats.TotalAssets * 100, 1)}%" : "—")
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="mt-3 pt-3 border-top">
+                    <a href="/Assets" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-arrow-right me-1"></i>View all assets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+@if (stats.TotalAssets > 0)
+{
+<script>
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Available', 'In Use', 'Maintenance', 'Retired'],
+            datasets: [{
+                data: [@stats.Available, @stats.InUse, @stats.Maintenance, @stats.Retired],
+                backgroundColor: ['#16a34a','#2563eb','#d97706','#dc2626'],
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            cutout: '65%',
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+            }
+        }
+    });
+</script>
+}
+}

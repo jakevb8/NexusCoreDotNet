@@ -1,0 +1,127 @@
+@page
+@model NexusCoreDotNet.Pages.Reports.IndexModel
+@{
+    ViewData["Title"] = "Reports";
+}
+
+<div class="page-header">
+    <h2>Reports &amp; Analytics</h2>
+    <p>Asset utilization and status breakdown — refreshed every 5 minutes</p>
+</div>
+
+@{
+    var stats = Model.Stats;
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body py-4">
+                <div class="fw-bold mb-1" style="font-size:2.5rem;color:#2563eb;">
+                    @stats.UtilizationRate<span style="font-size:1.2rem;">%</span>
+                </div>
+                <div class="text-muted" style="font-size:.875rem;">Utilization Rate</div>
+                <div class="mt-3 text-muted" style="font-size:.8rem;">IN_USE / Total</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body py-4">
+                <div class="fw-bold mb-1" style="font-size:2.5rem;color:#1e293b;">@stats.TotalAssets</div>
+                <div class="text-muted" style="font-size:.875rem;">Total Assets</div>
+                <div class="mt-3 text-muted" style="font-size:.8rem;">of 100 trial limit</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body py-4">
+                <div class="fw-bold mb-1" style="font-size:2.5rem;color:#16a34a;">@stats.TotalUsers</div>
+                <div class="text-muted" style="font-size:.875rem;">Team Members</div>
+                <div class="mt-3 text-muted" style="font-size:.8rem;">Active in org</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header border-0 bg-white">
+                <h6 class="fw-semibold mb-0">Asset Status Distribution</h6>
+            </div>
+            <div class="card-body d-flex justify-content-center" style="min-height:280px;align-items:center;">
+                @if (stats.TotalAssets == 0)
+                {
+                    <div class="text-center text-muted">
+                        <i class="bi bi-bar-chart fs-1 d-block mb-2"></i>
+                        <p>No data yet</p>
+                    </div>
+                }
+                else
+                {
+                    <canvas id="reportChart" width="240" height="240"></canvas>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-0 bg-white">
+                <h6 class="fw-semibold mb-0">Breakdown by Status</h6>
+            </div>
+            <div class="card-body">
+                @{
+                    var statuses = new[]
+                    {
+                        ("Available", stats.Available, "available", "#16a34a"),
+                        ("In Use", stats.InUse, "in_use", "#2563eb"),
+                        ("Maintenance", stats.Maintenance, "maintenance", "#d97706"),
+                        ("Retired", stats.Retired, "retired", "#dc2626"),
+                    };
+                }
+                @foreach (var (label, count, cls, color) in statuses)
+                {
+                    var pct = stats.TotalAssets > 0 ? (double)count / stats.TotalAssets * 100 : 0;
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="badge badge-@cls rounded-pill px-3">@label</span>
+                            <span class="text-muted" style="font-size:.85rem;">@count (@Math.Round(pct, 1)%)</span>
+                        </div>
+                        <div class="progress" style="height:6px;border-radius:4px;">
+                            <div class="progress-bar" style="width:@pct%;background:@color;border-radius:4px;"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+@if (stats.TotalAssets > 0)
+{
+<script>
+    const ctx = document.getElementById('reportChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Available', 'In Use', 'Maintenance', 'Retired'],
+            datasets: [{
+                data: [@stats.Available, @stats.InUse, @stats.Maintenance, @stats.Retired],
+                backgroundColor: ['#16a34a','#2563eb','#d97706','#dc2626'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+            }
+        }
+    });
+</script>
+}
+}
