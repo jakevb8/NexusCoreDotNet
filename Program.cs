@@ -214,6 +214,9 @@ app.UseMiddleware<SessionAuthMiddleware>();
 
 app.MapRazorPages();
 
+// Health check — must return 200 for Railway deployment probe
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
 app.MapGet("/", context =>
 {
     context.Response.Redirect("/Dashboard");
