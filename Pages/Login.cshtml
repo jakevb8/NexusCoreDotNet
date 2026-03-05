@@ -45,6 +45,8 @@
     const afToken = document.getElementById("af-token").value;
 
     async function verifyWithServer(idToken) {
+        console.log("[login] af-token present:", !!afToken, "length:", afToken?.length);
+        console.log("[login] posting to /Login?handler=Verify");
         const resp = await fetch("/Login?handler=Verify", {
             method: "POST",
             headers: {
@@ -53,8 +55,13 @@
             },
             body: JSON.stringify({ idToken })
         });
-        const data = await resp.json();
+        console.log("[login] verify response status:", resp.status);
+        const raw = await resp.text();
+        console.log("[login] verify response body:", raw.substring(0, 500));
+        let data;
+        try { data = JSON.parse(raw); } catch { data = { error: `Non-JSON response (${resp.status}): ${raw.substring(0, 200)}` }; }
         if (data.redirect) {
+            console.log("[login] redirecting to:", data.redirect);
             window.location.href = data.redirect;
         } else {
             errBox.textContent = data.error ?? "Authentication failed";

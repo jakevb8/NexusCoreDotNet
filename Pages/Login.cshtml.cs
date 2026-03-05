@@ -12,11 +12,13 @@ public class LoginModel : PageModel
 {
     private readonly AuthService _auth;
     private readonly IConfiguration _config;
+    private readonly ILogger<LoginModel> _logger;
 
-    public LoginModel(AuthService auth, IConfiguration config)
+    public LoginModel(AuthService auth, IConfiguration config, ILogger<LoginModel> logger)
     {
         _auth = auth;
         _config = config;
+        _logger = logger;
     }
 
     public string FirebaseConfigJson { get; private set; } = "{}";
@@ -41,13 +43,16 @@ public class LoginModel : PageModel
 
     public async Task<IActionResult> OnPostVerifyAsync([FromBody] VerifyRequest request)
     {
+        _logger.LogInformation("[login] OnPostVerifyAsync called, idToken present: {present}", !string.IsNullOrWhiteSpace(request?.IdToken));
         if (string.IsNullOrWhiteSpace(request?.IdToken))
             return new JsonResult(new { error = "Missing ID token" }) { StatusCode = 400 };
 
         try
         {
             var firebaseToken = await new FirebaseAuthService(_config).VerifyIdTokenAsync(request.IdToken);
+            _logger.LogInformation("[login] Firebase token verified, uid: {uid}", firebaseToken.Uid);
             var user = await _auth.GetUserByFirebaseUidAsync(firebaseToken.Uid);
+            _logger.LogInformation("[login] DB user found: {found}", user != null);
 
             if (user == null)
             {
@@ -58,6 +63,7 @@ public class LoginModel : PageModel
 
             var principal = AuthService.BuildClaimsPrincipal(user);
             var orgStatus = user.Organization?.Status.ToString() ?? "PENDING";
+            _logger.LogInformation("[login] orgStatus: {status}", orgStatus);
             ((System.Security.Claims.ClaimsIdentity)principal.Identity!)
                 .AddClaim(new System.Security.Claims.Claim("orgStatus", orgStatus));
 
@@ -67,14 +73,17 @@ public class LoginModel : PageModel
                 new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7) });
 
             var redirect = orgStatus == "ACTIVE" ? "/Dashboard" : "/PendingApproval";
+            _logger.LogInformation("[login] SignInAsync complete, returning redirect: {redirect}", redirect);
             return new JsonResult(new { redirect });
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
+            _logger.LogWarning("[login] UnauthorizedAccessException: {msg}", ex.Message);
             return new JsonResult(new { error = "Invalid or expired Firebase token" }) { StatusCode = 401 };
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[login] Unexpected exception");
             return new JsonResult(new { error = ex.Message }) { StatusCode = 500 };
         }
     }
