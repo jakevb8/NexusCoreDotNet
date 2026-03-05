@@ -36,6 +36,7 @@
     import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 
     const firebaseConfig = @Html.Raw(Model.FirebaseConfigJson);
+    console.log("[login] firebaseConfig:", JSON.stringify({...firebaseConfig, apiKey: firebaseConfig.apiKey ? "[present, length=" + firebaseConfig.apiKey.length + "]" : "[MISSING]"}));
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
@@ -73,6 +74,7 @@
 
     // On page load, check if we're returning from a redirect sign-in
     getRedirectResult(auth).then(async result => {
+        console.log("[login] getRedirectResult:", result ? "GOT RESULT uid=" + result.user.uid : "null (no pending redirect)");
         if (!result) return; // no redirect in progress
         btn.disabled = true;
         btn.textContent = "Signing in...";
