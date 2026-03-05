@@ -50,7 +50,9 @@ public class AuthService
         if (string.IsNullOrEmpty(email))
             throw new InvalidOperationException("Firebase token has no email claim");
 
-        if (await _db.Users.AnyAsync(u => u.FirebaseUid == firebaseUid))
+        // Block if this email already has a user record (regardless of which Firebase
+        // project issued the UID — email is the cross-client identity).
+        if (await _db.Users.AnyAsync(u => u.Email == email))
             throw new InvalidOperationException("User already registered");
 
         if (await _db.Organizations.AnyAsync(o => o.Slug == orgSlug))
@@ -99,7 +101,8 @@ public class AuthService
         if (!string.Equals(invite.Email, email, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Invite email mismatch");
 
-        if (await _db.Users.AnyAsync(u => u.FirebaseUid == firebaseUid))
+        // Block if this email already has a user record (cross-client identity check).
+        if (await _db.Users.AnyAsync(u => u.Email == email))
             throw new InvalidOperationException("User already registered");
 
         var user = new User
@@ -119,9 +122,51 @@ public class AuthService
     }
 
     public async Task<User?> GetUserByFirebaseUidAsync(string firebaseUid)
-        => await _db.Users
+    {
+        // Primary lookup by UID — fast path for established sessions.
+        var user = await _db.Users
             .Include(u => u.Organization)
             .FirstOrDefaultAsync(u => u.FirebaseUid == firebaseUid);
+
+        if (user != null) return user;
+
+        // UID not found — this Firebase project may be different from the one that
+        // originally created the user (e.g. JS app vs .NET app vs mobile).
+        // We cannot do the email fallback here because we don't have the email —
+        // this method only receives the UID. Callers that have the decoded token
+        // should use GetOrMigrateUserAsync instead.
+        return null;
+    }
+
+    /// <summary>
+    /// Looks up a user by Firebase UID. If not found, falls back to email lookup
+    /// and migrates the UID so subsequent lookups hit the fast path.
+    /// This is the correct method to use when you have both UID and email
+    /// (i.e. after verifying a Firebase ID token).
+    /// </summary>
+    public async Task<User?> GetOrMigrateUserAsync(string firebaseUid, string email)
+    {
+        // Fast path: UID already matches.
+        var user = await _db.Users
+            .Include(u => u.Organization)
+            .FirstOrDefaultAsync(u => u.FirebaseUid == firebaseUid);
+
+        if (user != null) return user;
+
+        // Fallback: find by email (user registered via a different Firebase project / client).
+        var byEmail = await _db.Users
+            .Include(u => u.Organization)
+            .FirstOrDefaultAsync(u => u.Email == email);
+
+        if (byEmail == null) return null;
+
+        // Migrate the stored UID to the current Firebase UID so future lookups
+        // hit the fast path without needing the email fallback.
+        byEmail.FirebaseUid = firebaseUid;
+        await _db.SaveChangesAsync();
+
+        return byEmail;
+    }
 
     public async Task<User?> GetUserByIdAsync(Guid userId)
         => await _db.Users

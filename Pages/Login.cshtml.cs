@@ -49,7 +49,10 @@ public class LoginModel : PageModel
         try
         {
             var firebaseToken = await new FirebaseAuthService(_config).VerifyIdTokenAsync(request.IdToken);
-            var user = await _auth.GetUserByFirebaseUidAsync(firebaseToken.Uid);
+            var email = firebaseToken.Claims.TryGetValue("email", out var emailObj)
+                ? emailObj?.ToString() ?? string.Empty
+                : string.Empty;
+            var user = await _auth.GetOrMigrateUserAsync(firebaseToken.Uid, email);
 
             if (user == null)
             {

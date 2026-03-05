@@ -135,19 +135,20 @@ public class AuthServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Register_ThrowsOnDuplicateFirebaseUid()
+    public async Task Register_ThrowsOnDuplicateEmail()
     {
         var org = new Organization { Name = "Existing", Slug = "existing" };
         _db.Organizations.Add(org);
         _db.Users.Add(new User
         {
-            FirebaseUid = "uid-dup",
+            FirebaseUid = "uid-original",
             Email = "dup@test.com",
             OrganizationId = org.Id
         });
         _db.SaveChanges();
 
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-dup", "other@test.com"));
+        // Same email, different UID (e.g. different Firebase project / client)
+        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-different-client", "dup@test.com"));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.RegisterNewOrganizationAsync("tok", "NewOrg", "new-org", null));
@@ -325,6 +326,44 @@ public class AuthServiceTests : IDisposable
     public async Task GetUserByFirebaseUid_ReturnsNullWhenNotFound()
     {
         var user = await _sut.GetUserByFirebaseUidAsync("not-a-uid");
+        Assert.Null(user);
+    }
+
+    // ── GetOrMigrateUserAsync ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetOrMigrateUser_ReturnsByUidOnFastPath()
+    {
+        var org = new Organization { Name = "Org", Slug = "org-migrate-fast" };
+        _db.Organizations.Add(org);
+        _db.Users.Add(new User { FirebaseUid = "uid-fast", Email = "fast@test.com", OrganizationId = org.Id });
+        _db.SaveChanges();
+
+        var user = await _sut.GetOrMigrateUserAsync("uid-fast", "fast@test.com");
+
+        Assert.NotNull(user);
+        Assert.Equal("uid-fast", user!.FirebaseUid);
+    }
+
+    [Fact]
+    public async Task GetOrMigrateUser_FallsBackToEmailAndMigratesUid()
+    {
+        var org = new Organization { Name = "Org", Slug = "org-migrate-email" };
+        _db.Organizations.Add(org);
+        _db.Users.Add(new User { FirebaseUid = "uid-old", Email = "migrate@test.com", OrganizationId = org.Id });
+        _db.SaveChanges();
+
+        // New UID from a different Firebase project / client
+        var user = await _sut.GetOrMigrateUserAsync("uid-new-client", "migrate@test.com");
+
+        Assert.NotNull(user);
+        Assert.Equal("uid-new-client", user!.FirebaseUid); // UID updated in DB
+    }
+
+    [Fact]
+    public async Task GetOrMigrateUser_ReturnsNullWhenNeitherUidNorEmailFound()
+    {
+        var user = await _sut.GetOrMigrateUserAsync("uid-unknown", "nobody@test.com");
         Assert.Null(user);
     }
 }
