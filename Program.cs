@@ -13,11 +13,42 @@ using NexusCoreDotNet.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Configuration ────────────────────────────────────────────────────────────
-// Support DATABASE_URL environment variable (Railway / Neon style)
+// Support DATABASE_URL environment variable (Railway / Neon postgresql:// style).
+// Npgsql does not accept URL format or unknown parameters like channel_binding,
+// so we parse the URL manually and build a proper key=value connection string.
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    builder.Configuration["ConnectionStrings:DefaultConnection"] = databaseUrl;
+    string connStr;
+    try
+    {
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var user = Uri.UnescapeDataString(userInfo[0]);
+        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty;
+        var host = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.AbsolutePath.TrimStart('/');
+
+        // Parse query params but drop ones Npgsql doesn't understand
+        var unsupported = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "channel_binding" };
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var extras = new System.Text.StringBuilder();
+        foreach (string key in query)
+        {
+            if (!unsupported.Contains(key))
+                extras.Append($";{key}={query[key]}");
+        }
+
+        connStr = $"Host={host};Port={port};Database={database};Username={user};Password={password}{extras}";
+    }
+    catch
+    {
+        // Not a URL format — use as-is (already a Npgsql connection string)
+        connStr = databaseUrl;
+    }
+    builder.Configuration["ConnectionStrings:DefaultConnection"] = connStr;
 }
 
 var firebaseProjectId = (Environment.GetEnvironmentVariable("FIREBASE_PROJECT_ID")
@@ -160,7 +191,16 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
+    // Log the full exception before returning the error page
+    app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
+    {
+        var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+        var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Unhandled exception for {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
+        ctx.Response.StatusCode = 500;
+        ctx.Response.ContentType = "text/plain";
+        await ctx.Response.WriteAsync("Internal Server Error");
+    }));
     // Do NOT use HSTS or HTTPS redirect — Railway terminates TLS at its proxy
 }
 
