@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using NexusCoreDotNet.Data;
 using NexusCoreDotNet.Middleware;
 using NexusCoreDotNet.Services;
@@ -92,11 +93,20 @@ if (FirebaseApp.DefaultInstance == null)
 }
 
 // ── Database ──────────────────────────────────────────────────────────────────
+// Register .NET enums as their native PostgreSQL enum types (created by Prisma).
+// Npgsql requires this mapping before the data source is built.
+var dbConnStr = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("DefaultConnection is not configured");
+
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(dbConnStr);
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.OrgStatus>("OrgStatus");
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.Role>("Role");
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.AssetStatus>("AssetStatus");
+var dataSource = dataSourceBuilder.Build();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("DefaultConnection is not configured");
-    options.UseNpgsql(connStr, o => o.EnableRetryOnFailure(3));
+    options.UseNpgsql(dataSource, o => o.EnableRetryOnFailure(3));
 });
 
 // ── Caching ───────────────────────────────────────────────────────────────────

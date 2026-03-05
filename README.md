@@ -4,6 +4,8 @@ Multi-tenant Resource Management SaaS built with ASP.NET Core 8 Razor Pages. Org
 
 > **Sister repo:** [NexusCoreJS](https://github.com/jakevb8/NexusCore) — identical feature set built with Next.js 15 + NestJS + TurboRepo. Both repos share the same Neon PostgreSQL database.
 
+**Live demo:** https://nexuscoredotnet-production.up.railway.app
+
 ---
 
 ## Tech Stack
@@ -97,7 +99,7 @@ The first user to register becomes `ORG_MANAGER` of a `PENDING` organization (un
 ```sql
 UPDATE organizations
 SET status = 'ACTIVE'
-WHERE id = (SELECT organization_id FROM users WHERE email = 'your@email.com');
+WHERE id = (SELECT "organizationId" FROM users WHERE email = 'your@email.com');
 
 UPDATE users
 SET role = 'SUPERADMIN'
