@@ -3,6 +3,7 @@ using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using NexusCoreDotNet.Data;
@@ -150,13 +151,19 @@ builder.Services.AddAntiforgery(o => o.HeaderName = "X-XSRF-TOKEN");
 var app = builder.Build();
 
 // ── Middleware pipeline ───────────────────────────────────────────────────────
+// Trust Railway's reverse proxy so X-Forwarded-Proto is respected
+// (needed for correct cookie Secure policy and OAuth redirect URIs)
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    app.UseHsts();
+    // Do NOT use HSTS or HTTPS redirect — Railway terminates TLS at its proxy
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseRateLimiter();
