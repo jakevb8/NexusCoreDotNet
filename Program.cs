@@ -98,6 +98,14 @@ var dbConnStr = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("DefaultConnection is not configured");
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(dbConnStr);
+// MapEnum tells Npgsql that these are native PostgreSQL enum types (created by
+// Prisma) so it sends the correct type OID when writing. NpgsqlNullNameTranslator
+// preserves the UPPERCASE member names that Prisma stored in the DB.
+// HasConversion<string>() in AppDbContext handles the EF ↔ .NET enum serialization.
+var passthrough = new Npgsql.NameTranslation.NpgsqlNullNameTranslator();
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.OrgStatus>("OrgStatus", passthrough);
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.Role>("Role", passthrough);
+dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.AssetStatus>("AssetStatus", passthrough);
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
