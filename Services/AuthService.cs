@@ -11,11 +11,11 @@ namespace NexusCoreDotNet.Services;
 public class AuthService
 {
     private readonly AppDbContext _db;
-    private readonly FirebaseAuthService _firebase;
+    private readonly IFirebaseAuthService _firebase;
     private const int AutoApproveDailyLimit = 5;
     private const int AutoApproveTotalLimit = 50;
 
-    public AuthService(AppDbContext db, FirebaseAuthService firebase)
+    public AuthService(AppDbContext db, IFirebaseAuthService firebase)
     {
         _db = db;
         _firebase = firebase;

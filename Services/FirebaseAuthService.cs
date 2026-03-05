@@ -4,7 +4,7 @@ using Google.Apis.Auth.OAuth2;
 
 namespace NexusCoreDotNet.Services;
 
-public class FirebaseAuthService
+public class FirebaseAuthService : IFirebaseAuthService
 {
     private readonly FirebaseAuth _auth;
 
@@ -18,11 +18,12 @@ public class FirebaseAuthService
     /// Verify a raw Firebase ID token and return the decoded claims.
     /// Throws UnauthorizedAccessException on failure.
     /// </summary>
-    public async Task<FirebaseToken> VerifyIdTokenAsync(string idToken)
+    public async Task<DecodedToken> VerifyIdTokenAsync(string idToken)
     {
         try
         {
-            return await _auth.VerifyIdTokenAsync(idToken);
+            var token = await _auth.VerifyIdTokenAsync(idToken);
+            return new DecodedToken(token.Uid, token.Claims);
         }
         catch (Exception ex)
         {

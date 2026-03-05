@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NexusCoreDotNet.Data.Entities;
 using NexusCoreDotNet.Enums;
 
@@ -93,7 +95,10 @@ public class AppDbContext : DbContext
             e.Property(al => al.AssetId).HasColumnName("assetId");
             e.Property(al => al.Changes)
                 .HasColumnName("changes")
-                .HasColumnType("jsonb");
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v.RootElement.GetRawText(),
+                    v => JsonDocument.Parse(v, (JsonDocumentOptions)default));
             e.Property(al => al.Timestamp).HasColumnName("timestamp");
             e.HasIndex(al => al.ActorId);
             e.HasIndex(al => al.AssetId);

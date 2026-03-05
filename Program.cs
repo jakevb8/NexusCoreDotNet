@@ -145,6 +145,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpClient("Resend");
 
 // ── Application Services ──────────────────────────────────────────────────────
+builder.Services.AddScoped<IFirebaseAuthService, FirebaseAuthService>();
 builder.Services.AddScoped<FirebaseAuthService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AssetService>();
