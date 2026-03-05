@@ -41,8 +41,6 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Docker
-.dockerignore
 
 # Coverage
 coverage/
