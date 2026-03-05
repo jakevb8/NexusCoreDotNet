@@ -26,11 +26,36 @@ var firebaseProjectId = (Environment.GetEnvironmentVariable("FIREBASE_PROJECT_ID
 // ── Firebase Admin ────────────────────────────────────────────────────────────
 if (FirebaseApp.DefaultInstance == null)
 {
+    GoogleCredential credential;
+    var clientEmail = Environment.GetEnvironmentVariable("FIREBASE_CLIENT_EMAIL");
+    var privateKey = (Environment.GetEnvironmentVariable("FIREBASE_PRIVATE_KEY") ?? string.Empty)
+        .Replace("\\n", "\n")
+        .Trim('"');
+
+    if (!string.IsNullOrEmpty(clientEmail) && !string.IsNullOrEmpty(privateKey))
+    {
+        // Construct credentials from individual env vars (Railway / CI)
+        var serviceAccountJson = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            type = "service_account",
+            project_id = firebaseProjectId,
+            private_key = privateKey,
+            client_email = clientEmail
+        });
+        credential = GoogleCredential.FromJson(serviceAccountJson)
+            .CreateScoped("https://www.googleapis.com/auth/cloud-platform");
+    }
+    else
+    {
+        // Fall back to Application Default Credentials (local dev with GOOGLE_APPLICATION_CREDENTIALS)
+        credential = GoogleCredential.GetApplicationDefault()
+            .CreateScoped("https://www.googleapis.com/auth/cloud-platform");
+    }
+
     FirebaseApp.Create(new AppOptions
     {
         ProjectId = firebaseProjectId,
-        Credential = GoogleCredential.GetApplicationDefault()
-            .CreateScoped("https://www.googleapis.com/auth/cloud-platform")
+        Credential = credential
     });
 }
 

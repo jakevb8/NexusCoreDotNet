@@ -2,9 +2,17 @@
 
 ## Project Overview
 
-NexusCoreDotNet is the ASP.NET Core 8 Razor Pages implementation of the NexusCore multi-tenant Resource Management SaaS. It is a **single-project** web app (no separate API) — Razor Pages handles both UI and server-side logic, backed by Neon PostgreSQL via Entity Framework Core 8, Firebase Authentication (Google sign-in only), and deployed to Railway or Azure.
+NexusCoreDotNet is the ASP.NET Core 8 Razor Pages implementation of the NexusCore multi-tenant Resource Management SaaS. It is a **single-project** web app (no separate API) — Razor Pages handles both UI and server-side logic, backed by Neon PostgreSQL via Entity Framework Core 8, Firebase Authentication (Google sign-in only), and deployed to Railway.
 
 **Sister repo:** `NexusCoreJS` at `/Users/jake/projects/NexusCore` (GitHub: `jakevb8/NexusCore`) — a TurboRepo monorepo with Next.js 15 frontend + NestJS REST API implementing the same feature set, sharing the same Neon PostgreSQL database.
+
+## Firebase Project
+
+- **Project ID:** `nexus-core-dotnet` (separate from NexusCoreJS which uses `nexus-core-rms`)
+- **Web App ID:** `1:158130971426:web:d6d6ae3ff49f9fe1f73b7b`
+- **Auth domain:** `nexus-core-dotnet.firebaseapp.com`
+- **Service account:** `firebase-adminsdk-fbsvc@nexus-core-dotnet.iam.gserviceaccount.com`
+- **Google sign-in** must be enabled manually in the Firebase Console: https://console.firebase.google.com/project/nexus-core-dotnet/authentication/providers
 
 ## Cross-Repo Feature Parity
 
@@ -106,24 +114,25 @@ dotnet publish -c Release -o ./publish
 
 ## Environment Variables
 
+Set these in Railway Variables (no quotes around values):
+
 ```
 DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
-FIREBASE_PROJECT_ID=your-project-id
-Firebase__ApiKey=...
-Firebase__AuthDomain=...
-Firebase__StorageBucket=...
-Firebase__MessagingSenderId=...
-Firebase__AppId=...
+FIREBASE_PROJECT_ID=nexus-core-dotnet
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@nexus-core-dotnet.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY=<private key from service account JSON, with literal \n for newlines>
 Resend__ApiKey=re_xxxx
 App__FrontendUrl=https://your-app.up.railway.app
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceaccount.json
 ```
+
+The service account key file is at `/tmp/nexus-core-dotnet-serviceaccount.json` locally (gitignored).
+`Program.cs` constructs `GoogleCredential` from `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` env vars automatically; no file path needed on Railway.
 
 Or via `appsettings.json` / `appsettings.Development.json` (latter is gitignored).
 
 ## Common Pitfalls
 
-- **Firebase Admin credential**: `FirebaseApp.Create()` uses `GoogleCredential.GetApplicationDefault()`. In production (Railway), set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON path, or use Workload Identity. Alternatively, set `FIREBASE_PRIVATE_KEY` and `FIREBASE_CLIENT_EMAIL` and construct credentials manually.
+- **Firebase Admin credential**: `Program.cs` checks for `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` env vars first, constructs a `GoogleCredential` from them, then falls back to `GoogleCredential.GetApplicationDefault()` for local dev (point `GOOGLE_APPLICATION_CREDENTIALS` at the service account JSON).
 - **EF table names**: Must match Prisma's `@@map()` names exactly (e.g., `organizations`, `users`, `assets`, `audit_logs`, `invites`). Column names use snake_case (e.g., `firebase_uid`, `organization_id`, `created_at`).
 - **PostgreSQL enum columns**: Stored as strings via `.HasConversion<string>()`. Do not use EF enum types — they require a native PostgreSQL enum type, which the Prisma-managed schema does not create.
 - **`organizationId` never from body**: Always read from `AuthService.GetOrgId(User)`.
