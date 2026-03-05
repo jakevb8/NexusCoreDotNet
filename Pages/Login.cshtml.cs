@@ -43,27 +43,22 @@ public class LoginModel : PageModel
 
     public async Task<IActionResult> OnPostVerifyAsync([FromBody] VerifyRequest request)
     {
-        _logger.LogInformation("[login] OnPostVerifyAsync called, idToken present: {present}", !string.IsNullOrWhiteSpace(request?.IdToken));
         if (string.IsNullOrWhiteSpace(request?.IdToken))
             return new JsonResult(new { error = "Missing ID token" }) { StatusCode = 400 };
 
         try
         {
             var firebaseToken = await new FirebaseAuthService(_config).VerifyIdTokenAsync(request.IdToken);
-            _logger.LogInformation("[login] Firebase token verified, uid: {uid}", firebaseToken.Uid);
             var user = await _auth.GetUserByFirebaseUidAsync(firebaseToken.Uid);
-            _logger.LogInformation("[login] DB user found: {found}", user != null);
 
             if (user == null)
             {
-                // New user — redirect to onboarding; store idToken in session to re-use
                 HttpContext.Session.SetString("pendingIdToken", request.IdToken);
                 return new JsonResult(new { redirect = "/Onboarding" });
             }
 
             var principal = AuthService.BuildClaimsPrincipal(user);
             var orgStatus = user.Organization?.Status.ToString() ?? "PENDING";
-            _logger.LogInformation("[login] orgStatus: {status}", orgStatus);
             ((System.Security.Claims.ClaimsIdentity)principal.Identity!)
                 .AddClaim(new System.Security.Claims.Claim("orgStatus", orgStatus));
 
@@ -73,17 +68,16 @@ public class LoginModel : PageModel
                 new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7) });
 
             var redirect = orgStatus == "ACTIVE" ? "/Dashboard" : "/PendingApproval";
-            _logger.LogInformation("[login] SignInAsync complete, returning redirect: {redirect}", redirect);
             return new JsonResult(new { redirect });
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogWarning("[login] UnauthorizedAccessException: {msg}", ex.Message);
+            _logger.LogWarning("[login] Firebase token verification failed: {msg}", ex.Message);
             return new JsonResult(new { error = "Invalid or expired Firebase token" }) { StatusCode = 401 };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[login] Unexpected exception");
+            _logger.LogError(ex, "[login] Unexpected exception in OnPostVerifyAsync");
             return new JsonResult(new { error = ex.Message }) { StatusCode = 500 };
         }
     }

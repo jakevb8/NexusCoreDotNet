@@ -214,6 +214,17 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<SessionAuthMiddleware>();
 
+// Override COOP on /Login so Firebase signInWithPopup can communicate back
+// from the Google OAuth popup window. The default Railway/browser value of
+// "same-origin" blocks cross-origin popup messaging; "same-origin-allow-popups"
+// permits it while still protecting all other pages.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/Login"))
+        ctx.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups";
+    await next();
+});
+
 app.MapRazorPages();
 
 // Health check — must return 200 for Railway deployment probe
