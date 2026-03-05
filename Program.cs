@@ -177,7 +177,9 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // ── Anti-forgery ──────────────────────────────────────────────────────────────
-builder.Services.AddAntiforgery(o => o.HeaderName = "X-XSRF-TOKEN");
+// Use the framework default header name "RequestVerificationToken" so it matches
+// what the Login.cshtml JS sends in the "RequestVerificationToken" fetch header.
+builder.Services.AddAntiforgery();
 
 var app = builder.Build();
 
