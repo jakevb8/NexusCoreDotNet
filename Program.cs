@@ -98,10 +98,10 @@ var dbConnStr = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("DefaultConnection is not configured");
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(dbConnStr);
-// MapEnum tells Npgsql that these are native PostgreSQL enum types (created by
-// Prisma) so it sends the correct type OID when writing. NpgsqlNullNameTranslator
-// preserves the UPPERCASE member names that Prisma stored in the DB.
-// HasConversion<string>() in AppDbContext handles the EF ↔ .NET enum serialization.
+// Register native PG enum types at the Npgsql data source level.
+// With EF 9 + external NpgsqlDataSource, MapEnum must be called BOTH here
+// AND in the UseNpgsql() call below — the data source registration handles
+// low-level ADO reads/writes; the UseNpgsql registration handles EF query translation.
 var passthrough = new Npgsql.NameTranslation.NpgsqlNullNameTranslator();
 dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.OrgStatus>("OrgStatus", passthrough);
 dataSourceBuilder.MapEnum<NexusCoreDotNet.Enums.Role>("Role", passthrough);
@@ -110,7 +110,15 @@ var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseNpgsql(dataSource, o => o.EnableRetryOnFailure(3));
+    options.UseNpgsql(dataSource, o =>
+    {
+        o.EnableRetryOnFailure(3);
+        // EF 9 requires MapEnum on the UseNpgsql options as well when using an
+        // external NpgsqlDataSource — this wires up EF's query translation layer.
+        o.MapEnum<NexusCoreDotNet.Enums.OrgStatus>("OrgStatus", nameTranslator: passthrough);
+        o.MapEnum<NexusCoreDotNet.Enums.Role>("Role", nameTranslator: passthrough);
+        o.MapEnum<NexusCoreDotNet.Enums.AssetStatus>("AssetStatus", nameTranslator: passthrough);
+    });
 });
 
 // ── DataProtection ────────────────────────────────────────────────────────────
