@@ -1,10 +1,6 @@
-using System.Globalization;
-using CsvHelper;
-using CsvHelper.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using NexusCoreDotNet.Data.Entities;
-using NexusCoreDotNet.Enums;
 using NexusCoreDotNet.Filters;
 using NexusCoreDotNet.Services;
 
@@ -70,28 +66,11 @@ public class IndexModel : PageModel
             return RedirectToPage();
         }
 
-        var records = new List<(string Name, string SKU, string? Description, AssetStatus Status)>();
+        var records = new List<(string Name, string SKU, string? Description, NexusCoreDotNet.Enums.AssetStatus Status)>();
 
         try
         {
-            using var reader = new StreamReader(csvFile.OpenReadStream());
-            var config = new CsvConfiguration(CultureInfo.InvariantCulture) { HeaderValidated = null, MissingFieldFound = null, BadDataFound = null };
-            using var csv = new CsvReader(reader, config);
-            csv.Read(); csv.ReadHeader();
-
-            while (csv.Read())
-            {
-                var name = csv.GetField("Name") ?? string.Empty;
-                var sku = csv.GetField("SKU") ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(sku)) continue;
-
-                var statusStr = csv.GetField("Status") ?? "AVAILABLE";
-                var status = Enum.TryParse<AssetStatus>(statusStr.Replace(" ", "_").ToUpper(), out var s)
-                    ? s : AssetStatus.AVAILABLE;
-                var description = csv.GetField("Description");
-                records.Add((name, sku, description, status));
-            }
-
+            records = AssetService.ParseCsvStream(csvFile.OpenReadStream());
             _logger.LogInformation("CSV import: parsed {Count} records", records.Count);
         }
         catch (Exception ex)

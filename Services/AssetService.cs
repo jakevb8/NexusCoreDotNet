@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
+using CsvHelper;
+using CsvHelper.Configuration;
 using Microsoft.EntityFrameworkCore;
 using NexusCoreDotNet.Data;
 using NexusCoreDotNet.Data.Entities;
@@ -115,6 +118,42 @@ public class AssetService
     }
 
     public record BulkImportResult(int Created, int Skipped, bool LimitReached, List<string> Errors);
+
+    /// <summary>
+    /// Parses a CSV stream into import records. Returns an empty list on parse failure.
+    /// Expected columns: Name, SKU, Description (optional), Status (optional).
+    /// </summary>
+    public static List<(string Name, string SKU, string? Description, AssetStatus Status)> ParseCsvStream(Stream stream)
+    {
+        var records = new List<(string, string, string?, AssetStatus)>();
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            HeaderValidated = null,
+            MissingFieldFound = null,
+            BadDataFound = null,
+        };
+
+        using var reader = new StreamReader(stream);
+        using var csv = new CsvReader(reader, config);
+
+        csv.Read();
+        csv.ReadHeader();
+
+        while (csv.Read())
+        {
+            var name = csv.GetField("Name") ?? string.Empty;
+            var sku = csv.GetField("SKU") ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(sku)) continue;
+
+            var statusStr = csv.GetField("Status") ?? "AVAILABLE";
+            var status = Enum.TryParse<AssetStatus>(statusStr.Replace(" ", "_").ToUpper(), out var s)
+                ? s : AssetStatus.AVAILABLE;
+            var description = csv.GetField("Description");
+            records.Add((name, sku, description, status));
+        }
+
+        return records;
+    }
 
     public async Task<BulkImportResult> BulkImportAsync(
         List<(string Name, string SKU, string? Description, AssetStatus Status)> records,

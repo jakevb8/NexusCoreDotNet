@@ -205,7 +205,63 @@ public class AssetServiceTests : IDisposable
             () => _sut.DeleteAsync(Guid.NewGuid(), _orgId, _actorId));
     }
 
-    // ── BulkImportAsync ───────────────────────────────────────────────────────
+    // ── ParseCsvStream ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ParseCsvStream_ParsesWellFormedCsv()
+    {
+        var csv = "Name,SKU,Description,Status\nLaptop Pro 15,LP-001,MacBook Pro,AVAILABLE\nDesk Chair,DC-001,Ergonomic,IN_USE\n";
+        using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(csv));
+
+        var records = AssetService.ParseCsvStream(stream);
+
+        Assert.Equal(2, records.Count);
+        Assert.Equal("Laptop Pro 15", records[0].Name);
+        Assert.Equal("LP-001", records[0].SKU);
+        Assert.Equal(AssetStatus.AVAILABLE, records[0].Status);
+        Assert.Equal(AssetStatus.IN_USE, records[1].Status);
+    }
+
+    [Fact]
+    public void ParseCsvStream_SkipsRowsWithMissingNameOrSku()
+    {
+        var csv = "Name,SKU,Description,Status\n,EMPTY-001,,AVAILABLE\nGoodName,,desc,AVAILABLE\nValid,V-001,,AVAILABLE\n";
+        using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(csv));
+
+        var records = AssetService.ParseCsvStream(stream);
+
+        Assert.Single(records);
+        Assert.Equal("Valid", records[0].Name);
+    }
+
+    [Fact]
+    public void ParseCsvStream_DefaultsStatusToAvailableOnUnknownValue()
+    {
+        var csv = "Name,SKU,Status\nAsset,A-001,BOGUS_STATUS\n";
+        using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(csv));
+
+        var records = AssetService.ParseCsvStream(stream);
+
+        Assert.Single(records);
+        Assert.Equal(AssetStatus.AVAILABLE, records[0].Status);
+    }
+
+    [Fact]
+    public void ParseCsvStream_HandlesUnquotedSpecialCharsViaBadDataFoundNull()
+    {
+        // This is the sample CSV that was previously broken: Monitor 27" contains an unescaped quote
+        var csv = "Name,SKU,Description,Status\nLaptop Pro 15,LP-001,MacBook Pro 15-inch,AVAILABLE\nDesk Chair,DC-001,Ergonomic office chair,IN_USE\nMonitor 27\",MN-001,4K UHD display,AVAILABLE\n";
+        using var stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(csv));
+
+        // Should not throw; bad row is skipped, valid rows are returned
+        var records = AssetService.ParseCsvStream(stream);
+
+        Assert.True(records.Count >= 2, $"Expected at least 2 records but got {records.Count}");
+        Assert.Contains(records, r => r.SKU == "LP-001");
+        Assert.Contains(records, r => r.SKU == "DC-001");
+    }
+
+
 
     [Fact]
     public async Task BulkImport_ReturnsCreatedAndSkippedCounts()
