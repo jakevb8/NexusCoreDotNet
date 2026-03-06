@@ -206,6 +206,24 @@ builder.Services.AddAntiforgery();
 
 var app = builder.Build();
 
+// ── Database bootstrap ────────────────────────────────────────────────────────
+// Ensure the DataProtectionKeys table exists. This table is not managed by
+// Prisma (it is owned by ASP.NET Core Data Protection), so we create it with
+// raw SQL on startup if it does not already exist. Without it the app crashes
+// before serving a single request.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS "DataProtectionKeys" (
+            "Id"           SERIAL NOT NULL,
+            "FriendlyName" TEXT,
+            "Xml"          TEXT,
+            CONSTRAINT "DataProtectionKeys_pkey" PRIMARY KEY ("Id")
+        )
+        """);
+}
+
 // ── Middleware pipeline ───────────────────────────────────────────────────────
 // Trust Railway's reverse proxy so X-Forwarded-Proto is respected
 // (needed for correct cookie Secure policy and OAuth redirect URIs)
