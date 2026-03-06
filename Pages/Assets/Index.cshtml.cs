@@ -14,10 +14,12 @@ namespace NexusCoreDotNet.Pages.Assets;
 public class IndexModel : PageModel
 {
     private readonly AssetService _assets;
+    private readonly ILogger<IndexModel> _logger;
 
-    public IndexModel(AssetService assets)
+    public IndexModel(AssetService assets, ILogger<IndexModel> logger)
     {
         _assets = assets;
+        _logger = logger;
     }
 
     public List<Asset> Assets { get; private set; } = new();
@@ -56,10 +58,14 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostImportAsync(IFormFile csvFile)
+    public async Task<IActionResult> OnPostImportAsync(IFormFile? csvFile)
     {
+        _logger.LogInformation("OnPostImportAsync called. IsAuthenticated={Auth}, File={File}",
+            User.Identity?.IsAuthenticated, csvFile?.FileName ?? "(null)");
+
         if (csvFile == null || csvFile.Length == 0)
         {
+            _logger.LogWarning("CSV import: no file provided");
             TempData["Error"] = "Please select a CSV file.";
             return RedirectToPage();
         }
@@ -85,16 +91,31 @@ public class IndexModel : PageModel
                 var description = csv.GetField("Description");
                 records.Add((name, sku, description, status));
             }
+
+            _logger.LogInformation("CSV import: parsed {Count} records", records.Count);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "CSV import: parse error");
             TempData["Error"] = $"CSV parse error: {ex.Message}";
             return RedirectToPage();
         }
 
-        var orgId = AuthService.GetOrgId(User);
-        var actorId = AuthService.GetUserId(User);
-        ImportResult = await _assets.BulkImportAsync(records, orgId, actorId);
+        try
+        {
+            var orgId = AuthService.GetOrgId(User);
+            var actorId = AuthService.GetUserId(User);
+            _logger.LogInformation("CSV import: starting BulkImport for org={OrgId} actor={ActorId}", orgId, actorId);
+            ImportResult = await _assets.BulkImportAsync(records, orgId, actorId);
+            _logger.LogInformation("CSV import: done — created={Created} skipped={Skipped} errors={Errors}",
+                ImportResult.Created, ImportResult.Skipped, ImportResult.Errors.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CSV import: bulk import failed");
+            TempData["Error"] = $"Import failed: {ex.Message}";
+            return RedirectToPage();
+        }
 
         await OnGetAsync();
         return Page();
