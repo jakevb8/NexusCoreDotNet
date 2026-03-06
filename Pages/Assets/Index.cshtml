@@ -10,7 +10,7 @@
         <p>Manage your organization's assets</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="/Assets/SampleCsv" class="btn btn-outline-secondary btn-sm">
+        <a href="/Assets?handler=SampleCsv" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-download me-1"></i>Sample CSV
         </a>
         @if (Model.IsManager)
@@ -201,7 +201,7 @@
                 <div class="modal-body">
                     <p class="text-muted" style="font-size:.875rem;">
                         Upload a CSV file with columns: <code>Name, SKU, Description, Status</code>.
-                        Download the <a href="/Assets/SampleCsv">sample template</a> to get started.
+                        Download the <a href="/Assets?handler=SampleCsv">sample template</a> to get started.
                     </p>
                     <form method="post" asp-page-handler="Import" enctype="multipart/form-data">
                         <div class="mb-3">

@@ -102,7 +102,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.HasKey(al => al.Id);
             e.Property(al => al.Id).HasColumnName("id").HasConversion<string>();
             e.Property(al => al.Action).HasColumnName("action").IsRequired();
-            e.Property(al => al.ActorId).HasColumnName("actorId").HasConversion<string>();
+            e.Property(al => al.ActorId).HasColumnName("actorId").HasConversion<string?>();
             e.Property(al => al.AssetId).HasColumnName("assetId").HasConversion<string>();
             // Json columns stored as jsonb — use HasColumnType("jsonb") plus a value
             // converter that round-trips through the raw JSON string.
@@ -119,7 +119,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.HasOne(al => al.Actor)
                 .WithMany(u => u.AuditLogs)
                 .HasForeignKey(al => al.ActorId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
             e.HasOne(al => al.Asset)
                 .WithMany(a => a.AuditLogs)
                 .HasForeignKey(al => al.AssetId)
