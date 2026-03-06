@@ -32,7 +32,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.Property(o => o.Slug).HasColumnName("slug").IsRequired();
             e.Property(o => o.Status)
                 .HasColumnName("status")
-                .HasConversion<string>()
+                .HasColumnType("OrgStatus")
                 .IsRequired();
             e.Property(o => o.CreatedAt).HasColumnName("createdAt");
             e.Property(o => o.UpdatedAt).HasColumnName("updatedAt");
@@ -50,7 +50,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.Property(u => u.DisplayName).HasColumnName("displayName");
             e.Property(u => u.Role)
                 .HasColumnName("role")
-                .HasConversion<string>()
+                .HasColumnType("Role")
                 .IsRequired();
             e.Property(u => u.OrganizationId).HasColumnName("organizationId").HasConversion<string>();
             e.Property(u => u.CreatedAt).HasColumnName("createdAt");
@@ -75,7 +75,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.Property(a => a.Description).HasColumnName("description");
             e.Property(a => a.Status)
                 .HasColumnName("status")
-                .HasConversion<string>()
+                .HasColumnType("AssetStatus")
                 .IsRequired();
             e.Property(a => a.AssignedTo).HasColumnName("assignedTo");
             e.Property(a => a.OrganizationId).HasColumnName("organizationId").HasConversion<string>();
@@ -127,7 +127,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.Property(i => i.Email).HasColumnName("email").IsRequired();
             e.Property(i => i.Role)
                 .HasColumnName("role")
-                .HasConversion<string>()
+                .HasColumnType("Role")
                 .IsRequired();
             e.Property(i => i.OrganizationId).HasColumnName("organizationId").HasConversion<string>();
             e.Property(i => i.Token).HasColumnName("token").IsRequired();
