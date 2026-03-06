@@ -75,7 +75,7 @@ public class IndexModel : PageModel
         try
         {
             using var reader = new StreamReader(csvFile.OpenReadStream());
-            var config = new CsvConfiguration(CultureInfo.InvariantCulture) { HeaderValidated = null, MissingFieldFound = null };
+            var config = new CsvConfiguration(CultureInfo.InvariantCulture) { HeaderValidated = null, MissingFieldFound = null, BadDataFound = null };
             using var csv = new CsvReader(reader, config);
             csv.Read(); csv.ReadHeader();
 
@@ -123,7 +123,7 @@ public class IndexModel : PageModel
 
     public IActionResult OnGetSampleCsv()
     {
-        var csv = "Name,SKU,Description,Status\nLaptop Pro 15,LP-001,MacBook Pro 15-inch,AVAILABLE\nDesk Chair,DC-001,Ergonomic office chair,IN_USE\nMonitor 27\",MN-001,4K UHD display,AVAILABLE\n";
+        var csv = "Name,SKU,Description,Status\nLaptop Pro 15,LP-001,MacBook Pro 15-inch,AVAILABLE\nDesk Chair,DC-001,Ergonomic office chair,IN_USE\nMonitor 27in,MN-001,4K UHD display,AVAILABLE\n";
         return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "assets-sample.csv");
     }
 }
