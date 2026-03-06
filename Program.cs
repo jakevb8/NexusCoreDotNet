@@ -230,6 +230,11 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "DataProtectionKeys_pkey" PRIMARY KEY ("Id")
         )
         """);
+
+    // Log how many keys are persisted — useful for diagnosing key ring issues.
+    var keyCount = db.DataProtectionKeys.Count();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    startupLogger.LogInformation("DataProtection: {KeyCount} key(s) persisted in database", keyCount);
 }
 
 // ── Middleware pipeline ───────────────────────────────────────────────────────
@@ -247,6 +252,17 @@ if (!app.Environment.IsDevelopment())
     {
         var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
         var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+
+        // Antiforgery validation failures mean the user has a stale session cookie
+        // (e.g. after a redeployment before key persistence was set up). Redirect to
+        // login so they can get a fresh session rather than showing a bare 400/500.
+        if (ex is Microsoft.AspNetCore.Antiforgery.AntiforgeryValidationException)
+        {
+            logger.LogWarning("Antiforgery validation failed — redirecting to login for {Path}", ctx.Request.Path);
+            ctx.Response.Redirect("/Login?reason=session_expired");
+            return;
+        }
+
         logger.LogError(ex, "Unhandled exception for {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
         ctx.Response.StatusCode = 500;
         ctx.Response.ContentType = "text/plain";
