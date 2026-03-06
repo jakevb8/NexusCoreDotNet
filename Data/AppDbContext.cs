@@ -32,15 +32,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.Property(o => o.Id).HasColumnName("id").HasConversion<string>();
             e.Property(o => o.Name).HasColumnName("name").IsRequired();
             e.Property(o => o.Slug).HasColumnName("slug").IsRequired();
-            // Prisma creates native PostgreSQL enum types (CREATE TYPE "OrgStatus" AS ENUM ...).
-            // Both HasConversion<string>() AND HasColumnType are required:
-            //   - HasConversion<string>() → EF serialises the .NET enum as its string name
-            //   - HasColumnType("\"OrgStatus\"") → Npgsql sends the parameter with the correct
-            //     PG type OID so PostgreSQL accepts it without a cast error.
-            // Do NOT use HasColumnType alone (breaks reads) or HasConversion alone (breaks writes).
+            // Prisma creates native PG enum types. MapEnum in Program.cs registers
+            // Npgsql's type handler. HasColumnType (quoted, case-sensitive) tells EF
+            // the column type for DDL/parameter binding. Do NOT add HasConversion<string>()
+            // here — it would override MapEnum and send plain text, breaking writes.
             e.Property(o => o.Status)
                 .HasColumnName("status")
-                .HasConversion<string>()
                 .HasColumnType("\"OrgStatus\"")
                 .IsRequired();
             e.Property(o => o.CreatedAt).HasColumnName("createdAt");
@@ -59,7 +56,6 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.Property(u => u.DisplayName).HasColumnName("displayName");
             e.Property(u => u.Role)
                 .HasColumnName("role")
-                .HasConversion<string>()
                 .HasColumnType("\"Role\"")
                 .IsRequired();
             e.Property(u => u.OrganizationId).HasColumnName("organizationId").HasConversion<string>();
@@ -85,7 +81,6 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.Property(a => a.Description).HasColumnName("description");
             e.Property(a => a.Status)
                 .HasColumnName("status")
-                .HasConversion<string>()
                 .HasColumnType("\"AssetStatus\"")
                 .IsRequired();
             e.Property(a => a.AssignedTo).HasColumnName("assignedTo");
@@ -140,7 +135,6 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             e.Property(i => i.Email).HasColumnName("email").IsRequired();
             e.Property(i => i.Role)
                 .HasColumnName("role")
-                .HasConversion<string>()
                 .HasColumnType("\"Role\"")
                 .IsRequired();
             e.Property(i => i.OrganizationId).HasColumnName("organizationId").HasConversion<string>();

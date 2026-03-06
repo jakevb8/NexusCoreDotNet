@@ -134,16 +134,7 @@ Or via `appsettings.json` / `appsettings.Development.json` (latter is gitignored
 
 - **Firebase Admin credential**: `Program.cs` checks for `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` env vars first, constructs a `GoogleCredential` from them, then falls back to `GoogleCredential.GetApplicationDefault()` for local dev (point `GOOGLE_APPLICATION_CREDENTIALS` at the service account JSON).
 - **EF table names**: Must match Prisma's `@@map()` names exactly (e.g., `organizations`, `users`, `assets`, `audit_logs`, `invites`). Column names must also match the Prisma field names exactly — Prisma uses **camelCase** column names (e.g., `firebaseUid`, `organizationId`, `createdAt`), NOT snake_case.
-- **PostgreSQL enum columns — CRITICAL**: Prisma creates native PostgreSQL enum types (`CREATE TYPE "Role" AS ENUM ...`). EF Core must be told about both the .NET↔string conversion AND the PG type name. The required pattern is **both together**:
-  ```csharp
-  .HasConversion<string>()
-  .HasColumnType("\"Role\"")   // quotes required — PG type names are case-sensitive
-  ```
-
-  - `HasConversion<string>()` alone → writes fail: `column "role" is of type "Role" but expression is of type text`
-  - `HasColumnType("\"Role\"")` alone → reads fail: `Reading as 'System.Int32' is not supported for fields having DataTypeName 'public.Role'`
-  - Both together → correct: EF serialises enum name as string, Npgsql sends it with the PG enum type OID.
-  - The `MapEnum<T>()` calls in `Program.cs` are NOT sufficient for EF Core — they only help raw ADO queries. EF requires `HasColumnType` in the model.
+- **PostgreSQL enum columns — CRITICAL**: Prisma creates native PostgreSQL enum types (`CREATE TYPE "Role" AS ENUM ...`). The correct pattern in `AppDbContext` is `HasColumnType("\"Role\"")` **only** — no `HasConversion<string>()`. The `MapEnum<T>()` calls in `Program.cs` register Npgsql's native type handler; `HasColumnType` tells EF the column type name for parameter binding. Adding `HasConversion<string>()` overrides the `MapEnum` handler and makes EF send a plain `text` value, causing `column "role" is of type "Role" but expression is of type text` on every write.
 - **ID columns are `text`, not `uuid`**: Prisma stores all `@id @default(uuid())` fields as PostgreSQL `text` columns, not the native `uuid` type. .NET entity properties typed as `System.Guid` will fail at runtime with `Reading as 'System.Guid' is not supported for fields having DataTypeName 'text'`. Every `Guid` property must have `.HasConversion<string>()` in `OnModelCreating`.
 - **`DataProtectionKeys` table**: ASP.NET Data Protection (`PersistKeysToDbContext`) requires a `DataProtectionKeys` table that Prisma does not know about. `Program.cs` creates it with `ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS ...")` on startup. Do not remove this bootstrap block.
 - **`organizationId` never from body**: Always read from `AuthService.GetOrgId(User)`.
