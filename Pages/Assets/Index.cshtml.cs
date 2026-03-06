@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using NexusCoreDotNet.Data.Entities;
+using NexusCoreDotNet.Enums;
 using NexusCoreDotNet.Filters;
 using NexusCoreDotNet.Services;
 
@@ -66,7 +67,7 @@ public class IndexModel : PageModel
             return RedirectToPage();
         }
 
-        var records = new List<(string Name, string SKU, string? Description, NexusCoreDotNet.Enums.AssetStatus Status)>();
+        var records = new List<(string Name, string SKU, string? Description, AssetStatus Status)>();
 
         try
         {
