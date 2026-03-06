@@ -9,6 +9,28 @@ NexusCoreDotNet is the ASP.NET Core 8 Razor Pages implementation of the NexusCor
 - `NexusCoreJS` at `/Users/jake/projects/NexusCore` (GitHub: `jakevb8/NexusCore`) — a TurboRepo monorepo with Next.js 15 frontend + NestJS REST API implementing the same feature set, sharing the same Neon PostgreSQL database.
 - `NexusCoreAndroid` at `/Users/jake/projects/NexusCoreAndroid` (GitHub: `jakevb8/NexusCoreAndroid`) — Android (Jetpack Compose) client app. Connects to either backend via a user-selectable toggle. Frontend feature changes must be propagated here; backend-only changes do not require Android changes.
 
+## NEVER COMMIT SECRETS — CRITICAL
+
+**This has caused incidents. Read carefully before every commit.**
+
+Files that must NEVER be committed to git:
+
+- `appsettings.Development.json` — contains real `DATABASE_URL`, `FIREBASE_PRIVATE_KEY`, `Resend__ApiKey`
+- `appsettings.json` — must only contain empty/placeholder values, never real keys
+- `firebase-adminsdk-*.json` / any service account JSON — contains the Firebase private key
+- `/tmp/nexus-core-dotnet-serviceaccount.json` — never commit this; it is only for local dev
+- Any file containing a real API key, private key, password, or connection string with credentials
+
+Before every `git add` or commit:
+
+1. Run `git diff --staged` and visually scan for any key/secret values in `appsettings.json` or any other config file
+2. If a secret was accidentally staged, run `git reset HEAD <file>` before committing
+3. If a secret was already committed, immediately: (a) rotate/revoke the key, (b) use BFG to purge it from history, (c) force-push
+
+**History of incidents:**
+
+- `appsettings.json` commit `8f41793` — Firebase Web API key `AIzaSy...` committed, removed in `2712803`, BFG-purged
+
 ## Firebase Project
 
 - **Project ID:** `nexus-core-dotnet` (separate from NexusCoreJS which uses `nexus-core-rms`)
