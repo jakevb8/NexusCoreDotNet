@@ -27,7 +27,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         {
             e.ToTable("organizations");
             e.HasKey(o => o.Id);
-            e.Property(o => o.Id).HasColumnName("id");
+            e.Property(o => o.Id).HasColumnName("id").HasConversion<string>();
             e.Property(o => o.Name).HasColumnName("name").IsRequired();
             e.Property(o => o.Slug).HasColumnName("slug").IsRequired();
             e.Property(o => o.Status)
@@ -44,7 +44,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         {
             e.ToTable("users");
             e.HasKey(u => u.Id);
-            e.Property(u => u.Id).HasColumnName("id");
+            e.Property(u => u.Id).HasColumnName("id").HasConversion<string>();
             e.Property(u => u.FirebaseUid).HasColumnName("firebaseUid").IsRequired();
             e.Property(u => u.Email).HasColumnName("email").IsRequired();
             e.Property(u => u.DisplayName).HasColumnName("displayName");
@@ -52,7 +52,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 .HasColumnName("role")
                 .HasConversion<string>()
                 .IsRequired();
-            e.Property(u => u.OrganizationId).HasColumnName("organizationId");
+            e.Property(u => u.OrganizationId).HasColumnName("organizationId").HasConversion<string>();
             e.Property(u => u.CreatedAt).HasColumnName("createdAt");
             e.Property(u => u.UpdatedAt).HasColumnName("updatedAt");
             e.HasIndex(u => u.FirebaseUid).IsUnique();
@@ -69,7 +69,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         {
             e.ToTable("assets");
             e.HasKey(a => a.Id);
-            e.Property(a => a.Id).HasColumnName("id");
+            e.Property(a => a.Id).HasColumnName("id").HasConversion<string>();
             e.Property(a => a.Name).HasColumnName("name").IsRequired();
             e.Property(a => a.SKU).HasColumnName("sku").IsRequired();
             e.Property(a => a.Description).HasColumnName("description");
@@ -78,7 +78,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 .HasConversion<string>()
                 .IsRequired();
             e.Property(a => a.AssignedTo).HasColumnName("assignedTo");
-            e.Property(a => a.OrganizationId).HasColumnName("organizationId");
+            e.Property(a => a.OrganizationId).HasColumnName("organizationId").HasConversion<string>();
             e.Property(a => a.CreatedAt).HasColumnName("createdAt");
             e.Property(a => a.UpdatedAt).HasColumnName("updatedAt");
             e.HasIndex(a => a.SKU).IsUnique();
@@ -94,10 +94,10 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         {
             e.ToTable("audit_logs");
             e.HasKey(al => al.Id);
-            e.Property(al => al.Id).HasColumnName("id");
+            e.Property(al => al.Id).HasColumnName("id").HasConversion<string>();
             e.Property(al => al.Action).HasColumnName("action").IsRequired();
-            e.Property(al => al.ActorId).HasColumnName("actorId");
-            e.Property(al => al.AssetId).HasColumnName("assetId");
+            e.Property(al => al.ActorId).HasColumnName("actorId").HasConversion<string>();
+            e.Property(al => al.AssetId).HasColumnName("assetId").HasConversion<string>();
             e.Property(al => al.Changes)
                 .HasColumnName("changes")
                 .HasColumnType("jsonb")
@@ -123,13 +123,13 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         {
             e.ToTable("invites");
             e.HasKey(i => i.Id);
-            e.Property(i => i.Id).HasColumnName("id");
+            e.Property(i => i.Id).HasColumnName("id").HasConversion<string>();
             e.Property(i => i.Email).HasColumnName("email").IsRequired();
             e.Property(i => i.Role)
                 .HasColumnName("role")
                 .HasConversion<string>()
                 .IsRequired();
-            e.Property(i => i.OrganizationId).HasColumnName("organizationId");
+            e.Property(i => i.OrganizationId).HasColumnName("organizationId").HasConversion<string>();
             e.Property(i => i.Token).HasColumnName("token").IsRequired();
             e.Property(i => i.ExpiresAt).HasColumnName("expiresAt");
             e.Property(i => i.AcceptedAt).HasColumnName("acceptedAt");
