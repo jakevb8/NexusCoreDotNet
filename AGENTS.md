@@ -133,14 +133,27 @@ Or via `appsettings.json` / `appsettings.Development.json` (latter is gitignored
 ## Common Pitfalls
 
 - **Firebase Admin credential**: `Program.cs` checks for `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` env vars first, constructs a `GoogleCredential` from them, then falls back to `GoogleCredential.GetApplicationDefault()` for local dev (point `GOOGLE_APPLICATION_CREDENTIALS` at the service account JSON).
-- **EF table names**: Must match Prisma's `@@map()` names exactly (e.g., `organizations`, `users`, `assets`, `audit_logs`, `invites`). Column names use snake_case (e.g., `firebase_uid`, `organization_id`, `created_at`).
-- **PostgreSQL enum columns**: Stored as strings via `.HasConversion<string>()`. Do not use EF enum types — they require a native PostgreSQL enum type, which the Prisma-managed schema does not create.
+- **EF table names**: Must match Prisma's `@@map()` names exactly (e.g., `organizations`, `users`, `assets`, `audit_logs`, `invites`). Column names must also match the Prisma field names exactly — Prisma uses **camelCase** column names (e.g., `firebaseUid`, `organizationId`, `createdAt`), NOT snake_case.
+- **PostgreSQL enum columns — CRITICAL**: Prisma creates native PostgreSQL enum types (`CREATE TYPE "Role" AS ENUM ...`). EF Core must be told about both the .NET↔string conversion AND the PG type name. The required pattern is **both together**:
+  ```csharp
+  .HasConversion<string>()
+  .HasColumnType("\"Role\"")   // quotes required — PG type names are case-sensitive
+  ```
+
+  - `HasConversion<string>()` alone → writes fail: `column "role" is of type "Role" but expression is of type text`
+  - `HasColumnType("\"Role\"")` alone → reads fail: `Reading as 'System.Int32' is not supported for fields having DataTypeName 'public.Role'`
+  - Both together → correct: EF serialises enum name as string, Npgsql sends it with the PG enum type OID.
+  - The `MapEnum<T>()` calls in `Program.cs` are NOT sufficient for EF Core — they only help raw ADO queries. EF requires `HasColumnType` in the model.
+- **ID columns are `text`, not `uuid`**: Prisma stores all `@id @default(uuid())` fields as PostgreSQL `text` columns, not the native `uuid` type. .NET entity properties typed as `System.Guid` will fail at runtime with `Reading as 'System.Guid' is not supported for fields having DataTypeName 'text'`. Every `Guid` property must have `.HasConversion<string>()` in `OnModelCreating`.
+- **`DataProtectionKeys` table**: ASP.NET Data Protection (`PersistKeysToDbContext`) requires a `DataProtectionKeys` table that Prisma does not know about. `Program.cs` creates it with `ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS ...")` on startup. Do not remove this bootstrap block.
 - **`organizationId` never from body**: Always read from `AuthService.GetOrgId(User)`.
+- **OrgStatus values**: Prisma uses `PENDING / ACTIVE / REJECTED`. The .NET `OrgStatus` enum must match exactly. Do NOT use `APPROVED` — the Prisma schema uses `ACTIVE`.
 - **SUPERADMIN bootstrap**: Run this SQL in Neon after first registration:
   ```sql
-  UPDATE organizations SET status = 'ACTIVE' WHERE id = (SELECT organization_id FROM users WHERE email = 'your@email.com');
+  UPDATE organizations SET status = 'ACTIVE' WHERE id = (SELECT "organizationId" FROM users WHERE email = 'your@email.com');
   UPDATE users SET role = 'SUPERADMIN' WHERE email = 'your@email.com';
   ```
 - **Rate limiter**: `UseRateLimiter()` must be called after `UseRouting()` and before `UseAuthentication()`.
-- **AuditLog.Changes**: Stored as `jsonb`. Uses `JsonDocument` to avoid double-serialization.
+- **AuditLog.Changes**: Stored as `jsonb`. Uses `HasColumnType("jsonb")` + `HasConversion` with `JsonDocument` to avoid double-serialization.
+- **When adding a new entity or column**: Cross-check every property type against `packages/database/prisma/schema.prisma` in NexusCoreJS before writing the EF mapping. Apply the rules above for every field: `Guid` → `HasConversion<string>()`, native PG enum → `HasConversion<string>() + HasColumnType("\"EnumName\"")`, `jsonb` → `HasColumnType("jsonb") + HasConversion(...)`.
 - After completing any task that modifies files, always commit and push to the current branch without asking for confirmation.
