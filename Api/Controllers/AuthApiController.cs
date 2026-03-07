@@ -21,28 +21,13 @@ public class AuthApiController : ControllerBase
     // GET /api/v1/auth/me — returns the authenticated user's profile
     [HttpGet("me")]
     [Authorize(AuthenticationSchemes = FirebaseJwtDefaults.AuthenticationScheme)]
-    public IActionResult GetMe()
+    public async Task<IActionResult> GetMe()
     {
         var userId = AuthService.GetUserId(User);
-        var orgId = AuthService.GetOrgId(User);
-        var role = AuthService.GetRole(User);
-        var email = User.FindFirst("email")?.Value ?? string.Empty;
-        var name = User.FindFirst("name")?.Value ?? email;
-        var orgStatus = User.FindFirst("orgStatus")?.Value;
+        var user = await _auth.GetUserByIdAsync(userId);
+        if (user == null) return NotFound(new { message = "User not found" });
 
-        return Ok(new
-        {
-            id = userId,
-            email,
-            displayName = name,
-            role = role.ToString(),
-            organizationId = orgId,
-            organization = new
-            {
-                id = orgId,
-                status = orgStatus
-            }
-        });
+        return Ok(MapUser(user));
     }
 
     public record RegisterRequest(string FirebaseToken, string OrgName, string Name, string Email);
