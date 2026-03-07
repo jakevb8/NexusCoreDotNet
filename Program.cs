@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using NexusCoreDotNet.Api;
 using NexusCoreDotNet.Data;
 using NexusCoreDotNet.Middleware;
 using NexusCoreDotNet.Services;
@@ -143,6 +144,8 @@ builder.Services.AddSession(options =>
 });
 
 // ── Authentication ────────────────────────────────────────────────────────────
+// Default scheme = Cookie (for Razor Pages).
+// FirebaseJwt scheme = Bearer token validation (for /api/v1/* REST endpoints).
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -154,9 +157,25 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    });
+    })
+    .AddScheme<AuthenticationSchemeOptions, FirebaseJwtHandler>(
+        FirebaseJwtDefaults.AuthenticationScheme, _ => { });
 
 builder.Services.AddAuthorization();
+
+// ── CORS ──────────────────────────────────────────────────────────────────────
+// Allow mobile clients (Android / iOS / React Native) and local dev to call
+// the /api/v1/* endpoints. Razor Pages are not affected by CORS.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ApiCors", policy =>
+        policy.SetIsOriginAllowed(_ => true)   // mobile apps use opaque origins
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
+
+// ── Controllers (REST API) ────────────────────────────────────────────────────
+builder.Services.AddControllers();
 
 // ── HTTP Client ───────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient("Resend");
@@ -273,6 +292,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseRouting();
+app.UseCors("ApiCors");
 app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
@@ -291,6 +311,7 @@ app.Use(async (ctx, next) =>
 });
 
 app.MapRazorPages();
+app.MapControllers();
 
 // Health check — must return 200 for Railway deployment probe
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
