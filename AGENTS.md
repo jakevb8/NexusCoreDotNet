@@ -8,6 +8,8 @@ NexusCoreDotNet is the ASP.NET Core 8 Razor Pages implementation of the NexusCor
 
 - `NexusCoreJS` at `/Users/jake/projects/NexusCore` (GitHub: `jakevb8/NexusCore`) — a TurboRepo monorepo with Next.js 15 frontend + NestJS REST API implementing the same feature set, sharing the same Neon PostgreSQL database.
 - `NexusCoreAndroid` at `/Users/jake/projects/NexusCoreAndroid` (GitHub: `jakevb8/NexusCoreAndroid`) — Android (Jetpack Compose) client app. Connects to either backend via a user-selectable toggle. Frontend feature changes must be propagated here; backend-only changes do not require Android changes.
+- `NexusCoreReact` at `/Users/jake/projects/NexusCoreReact` (GitHub: `jakevb8/NexusCoreReact`) — Expo React Native cross-platform client (iOS + Android). Frontend feature changes must be propagated here; backend-only changes do not require React Native changes.
+- `NexusCoreIOS` at `/Users/jake/projects/NexusCoreIOS` (GitHub: `jakevb8/NexusCoreIOS`) — SwiftUI iOS native client. Frontend feature changes must be propagated here; backend-only changes do not require iOS changes.
 
 ## NEVER COMMIT SECRETS — CRITICAL
 
@@ -66,7 +68,7 @@ Both repos implement **exactly the same product features**. When a feature is ad
 | Role management           | ORG_MANAGER can change member roles; cannot assign SUPERADMIN                                        |
 | Rate limiting             | 300 req/15 min global; 5 req/hour on `/Register` and `/AcceptInvite` endpoints                       |
 
-**When working in this repo (NexusCoreDotNet):** After completing any feature change, propagate it to both sister repos: implement the equivalent change in NexusCoreJS (same session), and if the change affects UI/frontend behaviour, also update NexusCoreAndroid. Backend-only changes do not require Android changes.
+**When working in this repo (NexusCoreDotNet):** After completing any feature change, propagate it to NexusCoreJS (same session), and if the change affects UI/frontend behaviour, also update NexusCoreAndroid, NexusCoreReact, and NexusCoreIOS. Backend-only changes do not require client app changes.
 
 **When working in NexusCoreJS:** Same rule applies in reverse — propagate to NexusCoreDotNet.
 
