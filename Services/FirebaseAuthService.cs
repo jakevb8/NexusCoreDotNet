@@ -10,8 +10,14 @@ public class FirebaseAuthService : IFirebaseAuthService
 
     public FirebaseAuthService(IConfiguration configuration)
     {
-        // FirebaseApp is initialized once in Program.cs; grab the default instance here.
-        _auth = FirebaseAuth.DefaultInstance;
+        // The REST API (FirebaseJwtHandler) receives tokens from mobile clients
+        // (Android / React Native / iOS) which authenticate against the
+        // "nexus-core-rms" Firebase project. Use the named "rms" FirebaseApp
+        // so VerifyIdTokenAsync checks the correct "aud" claim.
+        // The default FirebaseApp ("nexus-core-dotnet") is used only by Razor Pages,
+        // which instantiate FirebaseAuthService directly (not via DI).
+        var rmsApp = FirebaseApp.GetInstance("rms");
+        _auth = FirebaseAuth.GetAuth(rmsApp);
     }
 
     /// <summary>

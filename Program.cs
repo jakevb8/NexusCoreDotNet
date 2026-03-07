@@ -59,9 +59,18 @@ var firebaseProjectId = (Environment.GetEnvironmentVariable("FIREBASE_PROJECT_ID
     .Trim('"');
 
 // ── Firebase Admin ────────────────────────────────────────────────────────────
+// Two FirebaseApp instances are required:
+//   1. Default ("nexus-core-dotnet") — used by Razor Pages (web browser sign-in).
+//   2. "rms" ("nexus-core-rms") — used by REST API to verify tokens from the
+//      Android / React Native / iOS mobile clients, which authenticate against
+//      the nexus-core-rms Firebase project.
+// VerifyIdTokenAsync checks the token's "aud" claim against the app's ProjectId,
+// so each app must be initialized with the correct project ID.
+// The service account credential only needs to be valid for admin operations;
+// JWT signature verification uses Google's public JWKS regardless of project.
+GoogleCredential? sharedCredential = null;
 if (FirebaseApp.DefaultInstance == null)
 {
-    GoogleCredential credential;
     var clientEmail = Environment.GetEnvironmentVariable("FIREBASE_CLIENT_EMAIL");
     var privateKey = (Environment.GetEnvironmentVariable("FIREBASE_PRIVATE_KEY") ?? string.Empty)
         .Replace("\\n", "\n")
@@ -69,7 +78,6 @@ if (FirebaseApp.DefaultInstance == null)
 
     if (!string.IsNullOrEmpty(clientEmail) && !string.IsNullOrEmpty(privateKey))
     {
-        // Construct credentials from individual env vars (Railway / CI)
         var serviceAccountJson = System.Text.Json.JsonSerializer.Serialize(new
         {
             type = "service_account",
@@ -77,21 +85,28 @@ if (FirebaseApp.DefaultInstance == null)
             private_key = privateKey,
             client_email = clientEmail
         });
-        credential = GoogleCredential.FromJson(serviceAccountJson)
+        sharedCredential = GoogleCredential.FromJson(serviceAccountJson)
             .CreateScoped("https://www.googleapis.com/auth/cloud-platform");
     }
     else
     {
-        // Fall back to Application Default Credentials (local dev with GOOGLE_APPLICATION_CREDENTIALS)
-        credential = GoogleCredential.GetApplicationDefault()
+        sharedCredential = GoogleCredential.GetApplicationDefault()
             .CreateScoped("https://www.googleapis.com/auth/cloud-platform");
     }
 
+    // App 1: default — for Razor Pages (nexus-core-dotnet project)
     FirebaseApp.Create(new AppOptions
     {
         ProjectId = firebaseProjectId,
-        Credential = credential
+        Credential = sharedCredential
     });
+
+    // App 2: "rms" — for REST API / mobile clients (nexus-core-rms project)
+    FirebaseApp.Create(new AppOptions
+    {
+        ProjectId = "nexus-core-rms",
+        Credential = sharedCredential
+    }, "rms");
 }
 
 // ── Database ──────────────────────────────────────────────────────────────────
