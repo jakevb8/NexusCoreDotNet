@@ -96,14 +96,20 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         });
 
         // ── AuditLog ──────────────────────────────────────────────────────────
+        // Explicit converters for nullable Guid columns — HasConversion<string>() on a
+        // nullable Guid can fail to map null → SQL NULL, causing audit writes to throw.
+        var nullableGuidConverter = new ValueConverter<Guid?, string?>(
+            v => v == null ? null : v.Value.ToString(),
+            v => v == null ? null : Guid.Parse(v));
+
         modelBuilder.Entity<AuditLog>(e =>
         {
             e.ToTable("audit_logs");
             e.HasKey(al => al.Id);
             e.Property(al => al.Id).HasColumnName("id").HasConversion<string>();
             e.Property(al => al.Action).HasColumnName("action").IsRequired();
-            e.Property(al => al.ActorId).HasColumnName("actorId").HasConversion<string?>();
-            e.Property(al => al.AssetId).HasColumnName("assetId").HasConversion<string>();
+            e.Property(al => al.ActorId).HasColumnName("actorId").HasConversion(nullableGuidConverter);
+            e.Property(al => al.AssetId).HasColumnName("assetId").HasConversion(nullableGuidConverter);
             // Json columns stored as jsonb — use HasColumnType("jsonb") plus a value
             // converter that round-trips through the raw JSON string.
             e.Property(al => al.Changes)

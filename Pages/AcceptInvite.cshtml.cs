@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FirebaseAdmin.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -64,7 +65,24 @@ public class AcceptInviteModel : PageModel
     {
         try
         {
-            var user = await _auth.AcceptInviteAsync(request.IdToken, request.Token, request.DisplayName);
+            // Verify the token against the nexus-core-dotnet Firebase project (default app).
+            // FirebaseAuthService (injected into AuthService) uses the "rms" app for mobile
+            // clients — we must NOT use it here.
+            FirebaseToken decoded;
+            try
+            {
+                decoded = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(request.IdToken);
+            }
+            catch
+            {
+                return new JsonResult(new { error = "Invalid or expired Firebase token" }) { StatusCode = 401 };
+            }
+
+            var firebaseUid = decoded.Uid;
+            var email = decoded.Claims.TryGetValue("email", out var emailObj)
+                ? emailObj?.ToString() ?? string.Empty : string.Empty;
+
+            var user = await _auth.AcceptInviteAsync(firebaseUid, email, request.DisplayName, request.Token);
             var fullUser = (await _auth.GetUserByIdAsync(user.Id))!;
 
             var principal = AuthService.BuildClaimsPrincipal(fullUser);

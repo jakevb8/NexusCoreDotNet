@@ -72,13 +72,14 @@ public class AuthServiceTests : IDisposable
     }
 
     // ── RegisterNewOrganizationAsync ─────────────────────────────────────────
+    // Token verification is now the caller's responsibility (Razor Pages use
+    // FirebaseAuth.DefaultInstance; API controller uses IFirebaseAuthService).
+    // AuthService.RegisterNewOrganizationAsync takes pre-decoded uid + email.
 
     [Fact]
     public async Task Register_CreatesOrgAndUser()
     {
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid1", "user@test.com"));
-
-        var user = await _sut.RegisterNewOrganizationAsync("tok", "Acme", "acme", "Alice");
+        var user = await _sut.RegisterNewOrganizationAsync("uid1", "user@test.com", "Acme", "acme", "Alice");
 
         Assert.Equal("uid1", user.FirebaseUid);
         Assert.Equal("user@test.com", user.Email);
@@ -93,9 +94,7 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task Register_AutoApprovesWhenUnderLimits()
     {
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid2", "user@test.com"));
-
-        var user = await _sut.RegisterNewOrganizationAsync("tok", "Beta", "beta", null);
+        var user = await _sut.RegisterNewOrganizationAsync("uid2", "user@test.com", "Beta", "beta", null);
 
         var org = await _db.Organizations.FindAsync(user.OrganizationId);
         Assert.Equal(OrgStatus.ACTIVE, org!.Status);
@@ -105,9 +104,8 @@ public class AuthServiceTests : IDisposable
     public async Task Register_SetsPendingWhenDailyLimitReached()
     {
         SeedActiveOrgs(5, approvedToday: true);
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid3", "user@test.com"));
 
-        var user = await _sut.RegisterNewOrganizationAsync("tok", "Gamma", "gamma", null);
+        var user = await _sut.RegisterNewOrganizationAsync("uid3", "user@test.com", "Gamma", "gamma", null);
 
         var org = await _db.Organizations.FindAsync(user.OrganizationId);
         Assert.Equal(OrgStatus.PENDING, org!.Status);
@@ -117,21 +115,11 @@ public class AuthServiceTests : IDisposable
     public async Task Register_SetsPendingWhenTotalLimitReached()
     {
         SeedActiveOrgs(50);
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid4", "user@test.com"));
 
-        var user = await _sut.RegisterNewOrganizationAsync("tok", "Delta", "delta", null);
+        var user = await _sut.RegisterNewOrganizationAsync("uid4", "user@test.com", "Delta", "delta", null);
 
         var org = await _db.Organizations.FindAsync(user.OrganizationId);
         Assert.Equal(OrgStatus.PENDING, org!.Status);
-    }
-
-    [Fact]
-    public async Task Register_ThrowsOnBadFirebaseToken()
-    {
-        _firebase.VerifyIdTokenAsync("bad").Throws(new UnauthorizedAccessException("invalid"));
-
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.RegisterNewOrganizationAsync("bad", "X", "x", null));
     }
 
     [Fact]
@@ -148,10 +136,8 @@ public class AuthServiceTests : IDisposable
         _db.SaveChanges();
 
         // Same email, different UID (e.g. different Firebase project / client)
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-different-client", "dup@test.com"));
-
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.RegisterNewOrganizationAsync("tok", "NewOrg", "new-org", null));
+            () => _sut.RegisterNewOrganizationAsync("uid-different-client", "dup@test.com", "NewOrg", "new-org", null));
     }
 
     [Fact]
@@ -160,13 +146,13 @@ public class AuthServiceTests : IDisposable
         _db.Organizations.Add(new Organization { Name = "Taken", Slug = "taken" });
         _db.SaveChanges();
 
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-new", "new@test.com"));
-
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.RegisterNewOrganizationAsync("tok", "AnyName", "taken", null));
+            () => _sut.RegisterNewOrganizationAsync("uid-new", "new@test.com", "AnyName", "taken", null));
     }
 
     // ── AcceptInviteAsync ─────────────────────────────────────────────────────
+    // Token verification is the caller's responsibility.
+    // AcceptInviteAsync now takes pre-decoded (uid, email, displayName, token).
 
     [Fact]
     public async Task AcceptInvite_CreatesUserAndMarksAccepted()
@@ -184,9 +170,7 @@ public class AuthServiceTests : IDisposable
         _db.Invites.Add(invite);
         _db.SaveChanges();
 
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-inv", "inv@test.com"));
-
-        var user = await _sut.AcceptInviteAsync("tok", "valid-token", "Invitee");
+        var user = await _sut.AcceptInviteAsync("uid-inv", "inv@test.com", "Invitee", "valid-token");
 
         Assert.Equal("uid-inv", user.FirebaseUid);
         Assert.Equal(Role.ASSET_MANAGER, user.Role);
@@ -199,10 +183,8 @@ public class AuthServiceTests : IDisposable
     [Fact]
     public async Task AcceptInvite_ThrowsOnInvalidToken()
     {
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-x", "x@test.com"));
-
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => _sut.AcceptInviteAsync("tok", "no-such-token", null));
+            () => _sut.AcceptInviteAsync("uid-x", "x@test.com", null, "no-such-token"));
     }
 
     [Fact]
@@ -222,10 +204,8 @@ public class AuthServiceTests : IDisposable
         _db.Invites.Add(invite);
         _db.SaveChanges();
 
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-u", "used@test.com"));
-
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AcceptInviteAsync("tok", "used-token", null));
+            () => _sut.AcceptInviteAsync("uid-u", "used@test.com", null, "used-token"));
     }
 
     [Fact]
@@ -244,10 +224,8 @@ public class AuthServiceTests : IDisposable
         _db.Invites.Add(invite);
         _db.SaveChanges();
 
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-e", "exp@test.com"));
-
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AcceptInviteAsync("tok", "expired-token", null));
+            () => _sut.AcceptInviteAsync("uid-e", "exp@test.com", null, "expired-token"));
     }
 
     [Fact]
@@ -266,10 +244,8 @@ public class AuthServiceTests : IDisposable
         _db.Invites.Add(invite);
         _db.SaveChanges();
 
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-mm", "different@test.com"));
-
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AcceptInviteAsync("tok", "mm-token", null));
+            () => _sut.AcceptInviteAsync("uid-mm", "different@test.com", null, "mm-token"));
     }
 
     [Fact]
@@ -294,10 +270,8 @@ public class AuthServiceTests : IDisposable
         _db.Invites.Add(invite);
         _db.SaveChanges();
 
-        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid-existing", "exists@test.com"));
-
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AcceptInviteAsync("tok", "dup-token", null));
+            () => _sut.AcceptInviteAsync("uid-existing", "exists@test.com", null, "dup-token"));
     }
 
     // ── GetUserByFirebaseUidAsync ─────────────────────────────────────────────
@@ -365,5 +339,28 @@ public class AuthServiceTests : IDisposable
     {
         var user = await _sut.GetOrMigrateUserAsync("uid-unknown", "nobody@test.com");
         Assert.Null(user);
+    }
+
+    // ── VerifyTokenAsync ──────────────────────────────────────────────────────
+    // This method delegates to IFirebaseAuthService (used by REST API for rms tokens).
+
+    [Fact]
+    public async Task VerifyTokenAsync_DelegatesToFirebaseAuthService()
+    {
+        _firebase.VerifyIdTokenAsync("tok").Returns(MakeToken("uid1", "user@test.com"));
+
+        var result = await _sut.VerifyTokenAsync("tok");
+
+        Assert.Equal("uid1", result.Uid);
+        Assert.Equal("user@test.com", result.Claims["email"].ToString());
+    }
+
+    [Fact]
+    public async Task VerifyTokenAsync_ThrowsOnBadToken()
+    {
+        _firebase.VerifyIdTokenAsync("bad").Throws(new UnauthorizedAccessException("invalid"));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _sut.VerifyTokenAsync("bad"));
     }
 }

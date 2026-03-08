@@ -1,3 +1,4 @@
+using FirebaseAdmin.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -44,8 +45,28 @@ public class OnboardingModel : PageModel
 
         try
         {
+            // Verify token against the nexus-core-dotnet project (default app).
+            FirebaseToken decoded;
+            try
+            {
+                decoded = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(idToken);
+            }
+            catch
+            {
+                ErrorMessage = "Invalid or expired session. Please sign in again.";
+                return Page();
+            }
+
+            var firebaseUid = decoded.Uid;
+            var email = decoded.Claims.TryGetValue("email", out var emailObj)
+                ? emailObj?.ToString() ?? string.Empty : string.Empty;
+
+            var orgSlug = System.Text.RegularExpressions.Regex
+                .Replace(OrgName.ToLower().Trim(), @"[^a-z0-9]+", "-")
+                .Trim('-');
+
             var user = await _auth.RegisterNewOrganizationAsync(
-                idToken, OrgName, OrgSlug, DisplayName);
+                firebaseUid, email, OrgName, OrgSlug.Length > 0 ? OrgSlug : orgSlug, DisplayName);
 
             // Load with org
             user = (await _auth.GetUserByIdAsync(user.Id))!;

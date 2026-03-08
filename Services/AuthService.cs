@@ -21,6 +21,14 @@ public class AuthService
         _firebase = firebase;
     }
 
+    /// <summary>
+    /// Verify a raw Firebase ID token using the injected IFirebaseAuthService.
+    /// Used by the REST API (mobile clients) which authenticate against nexus-core-rms.
+    /// Razor Pages must verify tokens themselves using FirebaseAuth.DefaultInstance.
+    /// </summary>
+    public async Task<DecodedToken> VerifyTokenAsync(string idToken)
+        => await _firebase.VerifyIdTokenAsync(idToken);
+
     public async Task<bool> ShouldAutoApproveAsync()
     {
         var todayUtc = DateTime.UtcNow.Date;
@@ -36,17 +44,12 @@ public class AuthService
     }
 
     public async Task<User> RegisterNewOrganizationAsync(
-        string idToken,
+        string firebaseUid,
+        string email,
         string orgName,
         string orgSlug,
         string? displayName)
     {
-        var decoded = await _firebase.VerifyIdTokenAsync(idToken);
-        var firebaseUid = decoded.Uid;
-        var email = decoded.Claims.TryGetValue("email", out var emailObj)
-            ? emailObj?.ToString() ?? string.Empty
-            : string.Empty;
-
         if (string.IsNullOrEmpty(email))
             throw new InvalidOperationException("Firebase token has no email claim");
 
@@ -83,14 +86,8 @@ public class AuthService
         return user;
     }
 
-    public async Task<User> AcceptInviteAsync(string idToken, string token, string? displayName)
+    public async Task<User> AcceptInviteAsync(string firebaseUid, string email, string? displayName, string token)
     {
-        var decoded = await _firebase.VerifyIdTokenAsync(idToken);
-        var firebaseUid = decoded.Uid;
-        var email = decoded.Claims.TryGetValue("email", out var emailObj)
-            ? emailObj?.ToString() ?? string.Empty
-            : string.Empty;
-
         if (string.IsNullOrEmpty(email))
             throw new InvalidOperationException("Firebase token has no email claim");
 

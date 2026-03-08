@@ -73,10 +73,19 @@ public class AuthApiController : ControllerBase
 
         try
         {
+            var decoded = await _firebase.VerifyIdTokenAsync(body.FirebaseToken);
+            var firebaseUid = decoded.Uid;
+            var email = decoded.Claims.TryGetValue("email", out var emailObj)
+                ? emailObj?.ToString() ?? string.Empty : string.Empty;
+
             var user = await _auth.RegisterNewOrganizationAsync(
-                body.FirebaseToken, body.OrgName, orgSlug, body.Name);
+                firebaseUid, email, body.OrgName, orgSlug, body.Name);
 
             return Ok(MapUser(user));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already registered"))
         {
@@ -106,8 +115,17 @@ public class AuthApiController : ControllerBase
 
         try
         {
-            var user = await _auth.AcceptInviteAsync(body.FirebaseToken, body.Token, body.DisplayName);
+            var decoded = await _firebase.VerifyIdTokenAsync(body.FirebaseToken);
+            var firebaseUid = decoded.Uid;
+            var email = decoded.Claims.TryGetValue("email", out var emailObj)
+                ? emailObj?.ToString() ?? string.Empty : string.Empty;
+
+            var user = await _auth.AcceptInviteAsync(firebaseUid, email, body.DisplayName, body.Token);
             return Ok(MapUser(user));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
         }
         catch (KeyNotFoundException ex)
         {

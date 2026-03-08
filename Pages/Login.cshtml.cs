@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FirebaseAdmin.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -48,7 +49,20 @@ public class LoginModel : PageModel
 
         try
         {
-            var firebaseToken = await new FirebaseAuthService(_config).VerifyIdTokenAsync(request.IdToken);
+            // Verify against the nexus-core-dotnet Firebase project (default app).
+            // Do NOT use FirebaseAuthService here — it is wired to the "rms" (nexus-core-rms) app
+            // for mobile clients and would reject tokens issued by nexus-core-dotnet.
+            FirebaseToken firebaseToken;
+            try
+            {
+                firebaseToken = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(request.IdToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[login] Firebase token verification failed: {msg}", ex.Message);
+                return new JsonResult(new { error = "Invalid or expired Firebase token" }) { StatusCode = 401 };
+            }
+
             var email = firebaseToken.Claims.TryGetValue("email", out var emailObj)
                 ? emailObj?.ToString() ?? string.Empty
                 : string.Empty;
@@ -72,11 +86,6 @@ public class LoginModel : PageModel
 
             var redirect = orgStatus == "ACTIVE" ? "/Dashboard" : "/PendingApproval";
             return new JsonResult(new { redirect });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogWarning("[login] Firebase token verification failed: {msg}", ex.Message);
-            return new JsonResult(new { error = "Invalid or expired Firebase token" }) { StatusCode = 401 };
         }
         catch (Exception ex)
         {
