@@ -278,6 +278,42 @@ public class AuthServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AcceptInvite_WhenInviteAlreadyAcceptedAndUserExistsInSameOrg_RecoveryPathReturnsUser()
+    {
+        // This is the real-world scenario: user accepted the invite successfully but the
+        // session cookie was lost (e.g. after redeployment). They click the invite link
+        // again. The invite is already marked AcceptedAt, and a User record already
+        // exists. The old code threw "Invite already used" here. The fix checks for
+        // existingUser BEFORE the already-used guard so it can return the existing user.
+        var org = new Organization { Name = "Org", Slug = "org-recovery" };
+        _db.Organizations.Add(org);
+        var existingUser = new User
+        {
+            FirebaseUid = "uid-recovery",
+            Email = "recovery@test.com",
+            OrganizationId = org.Id
+        };
+        _db.Users.Add(existingUser);
+        var invite = new Invite
+        {
+            Email = "recovery@test.com",
+            Role = Role.VIEWER,
+            OrganizationId = org.Id,
+            Token = "recovery-token",
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            AcceptedAt = DateTime.UtcNow.AddHours(-1) // already accepted!
+        };
+        _db.Invites.Add(invite);
+        _db.SaveChanges();
+
+        // Should NOT throw "Invite already used"
+        var result = await _sut.AcceptInviteAsync("uid-recovery", "recovery@test.com", "Recovery User", "recovery-token");
+
+        Assert.Equal(existingUser.Id, result.Id);
+        Assert.Equal("Recovery User", result.DisplayName); // display name updated
+    }
+
+    [Fact]
     public async Task AcceptInvite_WhenUserInDifferentOrg_Throws()
     {
         var org1 = new Organization { Name = "Org1", Slug = "org-one" };

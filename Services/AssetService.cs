@@ -51,7 +51,7 @@ public class AssetService
         string name, string sku, string? description, AssetStatus status,
         string? assignedTo, Guid organizationId, Guid actorId)
     {
-        if (await _db.Assets.AnyAsync(a => a.SKU == sku))
+        if (await _db.Assets.AnyAsync(a => a.SKU == sku && a.OrganizationId == organizationId))
             throw new InvalidOperationException($"SKU \"{sku}\" already exists");
 
         var count = await _db.Assets.CountAsync(a => a.OrganizationId == organizationId);

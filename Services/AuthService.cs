@@ -93,15 +93,14 @@ public class AuthService
 
         var invite = await _db.Invites.FirstOrDefaultAsync(i => i.Token == token);
         if (invite == null) throw new KeyNotFoundException("Invite not found");
-        if (invite.AcceptedAt.HasValue) throw new InvalidOperationException("Invite already used");
         if (invite.ExpiresAt < DateTime.UtcNow) throw new InvalidOperationException("Invite has expired");
         if (!string.Equals(invite.Email, email, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Invite email mismatch");
 
-        // If a user with this email already exists, handle gracefully:
-        // - If they're in the correct org (e.g. partial failure on a previous attempt),
-        //   mark the invite accepted and return the existing user.
-        // - If they're in a different org, they can't accept this invite.
+        // Check for an existing user BEFORE checking AcceptedAt — an already-accepted
+        // invite where the user exists in the right org is a recoverable state (e.g.
+        // the session cookie was lost after a successful accept). Return the existing
+        // user so the caller can re-issue a session.
         var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (existingUser != null)
         {
@@ -117,6 +116,9 @@ public class AuthService
             await _db.SaveChangesAsync();
             return existingUser;
         }
+
+        // No existing user — enforce the invite-already-used guard only now.
+        if (invite.AcceptedAt.HasValue) throw new InvalidOperationException("Invite already used");
 
         var user = new User
         {

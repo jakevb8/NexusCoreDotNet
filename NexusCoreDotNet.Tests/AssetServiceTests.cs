@@ -118,6 +118,22 @@ public class AssetServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Create_AllowsSameSKUInDifferentOrg()
+    {
+        // SKU uniqueness is per-org, not global.
+        var otherOrgId = Guid.NewGuid();
+        _db.Organizations.Add(new Organization { Id = otherOrgId, Name = "Other Org", Slug = "other-org" });
+        _db.Assets.Add(new Asset { Name = "X", SKU = "SHARED-001", OrganizationId = otherOrgId });
+        _db.SaveChanges();
+
+        // Same SKU in our org should succeed
+        var asset = await _sut.CreateAsync("Y", "SHARED-001", null, AssetStatus.AVAILABLE, null, _orgId, _actorId);
+
+        Assert.NotNull(asset);
+        Assert.Equal("SHARED-001", asset.SKU);
+    }
+
+    [Fact]
     public async Task Create_ThrowsAtTrialLimit()
     {
         for (int i = 0; i < 100; i++)
