@@ -30,6 +30,28 @@ public class AuthApiController : ControllerBase
         return Ok(MapUser(user));
     }
 
+    // DELETE /api/v1/auth/me — delete own account and all associated data
+    [HttpDelete("me")]
+    [Authorize(AuthenticationSchemes = FirebaseJwtDefaults.AuthenticationScheme)]
+    public async Task<IActionResult> DeleteMe()
+    {
+        var userId = AuthService.GetUserId(User);
+
+        try
+        {
+            await _auth.DeleteAccountAsync(userId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
     public record RegisterRequest(string FirebaseToken, string OrgName, string Name, string Email);
 
     // POST /api/v1/auth/register — create a new org + user from a Firebase ID token

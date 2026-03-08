@@ -36,4 +36,13 @@ public class FirebaseAuthService : IFirebaseAuthService
             throw new UnauthorizedAccessException("Invalid or expired Firebase token", ex);
         }
     }
+
+    /// <summary>
+    /// Delete a Firebase Auth user record. Best-effort — callers should catch
+    /// exceptions rather than letting a Firebase failure roll back a DB deletion.
+    /// </summary>
+    public async Task DeleteUserAsync(string uid)
+    {
+        await _auth.DeleteUserAsync(uid);
+    }
 }

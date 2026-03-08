@@ -173,6 +173,43 @@ public class AuthService
             .Include(u => u.Organization)
             .FirstOrDefaultAsync(u => u.Id == userId);
 
+    /// <summary>
+    /// Delete the calling user's account:
+    ///   1. Delete the user row (EF cascade nulls AuditLog.ActorId via DB constraint).
+    ///   2. If they were the last member of their org, delete the org too
+    ///      (cascades assets, invites).
+    ///   3. Delete the Firebase Auth record (best-effort).
+    /// </summary>
+    public async Task DeleteAccountAsync(Guid userId)
+    {
+        var user = await _db.Users.FindAsync(userId)
+            ?? throw new KeyNotFoundException("User not found");
+
+        var remainingMembers = await _db.Users.CountAsync(u => u.OrganizationId == user.OrganizationId);
+
+        _db.Users.Remove(user);
+
+        if (remainingMembers == 1)
+        {
+            // This user was the last member — wipe the org and all its data.
+            var org = await _db.Organizations.FindAsync(user.OrganizationId);
+            if (org != null) _db.Organizations.Remove(org);
+        }
+
+        await _db.SaveChangesAsync();
+
+        // Remove Firebase Auth record — best-effort; do not let a Firebase failure
+        // surface as a 500 after the DB deletion has already committed.
+        try
+        {
+            await _firebase.DeleteUserAsync(user.FirebaseUid);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[DeleteAccount] Failed to delete Firebase user {user.FirebaseUid}: {ex.Message}");
+        }
+    }
+
     public static ClaimsPrincipal BuildClaimsPrincipal(User user)
     {
         var claims = new List<Claim>
