@@ -31,7 +31,7 @@ public class IndexModel : PageModel
     {
         Page = Math.Max(1, page);
         Search = search;
-        IsManager = AuthService.GetRole(User).HasAtLeast(Role.ORG_MANAGER);
+        IsManager = AuthService.GetRole(User).HasAtLeast(Role.ASSET_MANAGER);
         var orgId = AuthService.GetOrgId(User);
         var (data, total) = await _assets.FindAllAsync(orgId, Page, 20, search);
         Assets = data;

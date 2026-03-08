@@ -15,12 +15,14 @@ public class AcceptInviteModel : PageModel
     private readonly AuthService _auth;
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
+    private readonly ILogger<AcceptInviteModel> _logger;
 
-    public AcceptInviteModel(AuthService auth, AppDbContext db, IConfiguration config)
+    public AcceptInviteModel(AuthService auth, AppDbContext db, IConfiguration config, ILogger<AcceptInviteModel> logger)
     {
         _auth = auth;
         _db = db;
         _config = config;
+        _logger = logger;
     }
 
     public bool InviteValid { get; private set; }
@@ -99,6 +101,7 @@ public class AcceptInviteModel : PageModel
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[AcceptInvite] Accept failed for token={Token}", request.Token);
             return new JsonResult(new { error = ex.Message }) { StatusCode = 400 };
         }
     }

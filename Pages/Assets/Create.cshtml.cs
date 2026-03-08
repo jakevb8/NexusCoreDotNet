@@ -6,7 +6,7 @@ using NexusCoreDotNet.Services;
 
 namespace NexusCoreDotNet.Pages.Assets;
 
-[RequireRole(Role.ORG_MANAGER)]
+[RequireRole(Role.ASSET_MANAGER)]
 public class CreateModel : PageModel
 {
     private readonly AssetService _assets;

@@ -98,9 +98,25 @@ public class AuthService
         if (!string.Equals(invite.Email, email, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Invite email mismatch");
 
-        // Block if this email already has a user record (cross-client identity check).
-        if (await _db.Users.AnyAsync(u => u.Email == email))
-            throw new InvalidOperationException("User already registered");
+        // If a user with this email already exists, handle gracefully:
+        // - If they're in the correct org (e.g. partial failure on a previous attempt),
+        //   mark the invite accepted and return the existing user.
+        // - If they're in a different org, they can't accept this invite.
+        var existingUser = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (existingUser != null)
+        {
+            if (existingUser.OrganizationId != invite.OrganizationId)
+                throw new InvalidOperationException(
+                    "An account with this email already exists in a different organization.");
+
+            // Recovery path: user exists in the right org — ensure invite is marked accepted
+            // and UID is up to date, then return the existing user.
+            existingUser.FirebaseUid = firebaseUid;
+            if (displayName != null) existingUser.DisplayName = displayName;
+            if (!invite.AcceptedAt.HasValue) invite.AcceptedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return existingUser;
+        }
 
         var user = new User
         {

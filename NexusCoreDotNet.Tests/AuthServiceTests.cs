@@ -249,16 +249,17 @@ public class AuthServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task AcceptInvite_ThrowsWhenUserAlreadyRegistered()
+    public async Task AcceptInvite_WhenUserAlreadyInSameOrg_ReturnsExistingUserAndMarksAccepted()
     {
         var org = new Organization { Name = "Org", Slug = "org-dup" };
         _db.Organizations.Add(org);
-        _db.Users.Add(new User
+        var existingUser = new User
         {
             FirebaseUid = "uid-existing",
             Email = "exists@test.com",
             OrganizationId = org.Id
-        });
+        };
+        _db.Users.Add(existingUser);
         var invite = new Invite
         {
             Email = "exists@test.com",
@@ -270,8 +271,37 @@ public class AuthServiceTests : IDisposable
         _db.Invites.Add(invite);
         _db.SaveChanges();
 
+        var result = await _sut.AcceptInviteAsync("uid-existing", "exists@test.com", null, "dup-token");
+
+        Assert.Equal(existingUser.Id, result.Id);
+        Assert.True(_db.Invites.First(i => i.Token == "dup-token").AcceptedAt.HasValue);
+    }
+
+    [Fact]
+    public async Task AcceptInvite_WhenUserInDifferentOrg_Throws()
+    {
+        var org1 = new Organization { Name = "Org1", Slug = "org-one" };
+        var org2 = new Organization { Name = "Org2", Slug = "org-two" };
+        _db.Organizations.AddRange(org1, org2);
+        _db.Users.Add(new User
+        {
+            FirebaseUid = "uid-other-org",
+            Email = "other@test.com",
+            OrganizationId = org2.Id
+        });
+        var invite = new Invite
+        {
+            Email = "other@test.com",
+            Role = Role.VIEWER,
+            OrganizationId = org1.Id,
+            Token = "other-org-token",
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        };
+        _db.Invites.Add(invite);
+        _db.SaveChanges();
+
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AcceptInviteAsync("uid-existing", "exists@test.com", null, "dup-token"));
+            () => _sut.AcceptInviteAsync("uid-other-org", "other@test.com", null, "other-org-token"));
     }
 
     // ── GetUserByFirebaseUidAsync ─────────────────────────────────────────────
