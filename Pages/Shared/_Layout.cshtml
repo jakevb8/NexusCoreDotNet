@@ -104,6 +104,11 @@
                     <i class="bi bi-bar-chart-line"></i> Reports
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="/Events" class="@(currentPath.StartsWith("/Events") ? "active" : "")">
+                    <i class="bi bi-lightning-charge"></i> Events
+                </a>
+            </li>
             @if (isOrgManager)
             {
                 <li class="nav-item">

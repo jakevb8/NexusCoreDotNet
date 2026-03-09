@@ -204,6 +204,7 @@ builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ReportsService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<EventsService>();
 
 // ── Razor Pages ───────────────────────────────────────────────────────────────
 builder.Services.AddRazorPages(options =>
@@ -212,6 +213,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizeFolder("/Assets");
     options.Conventions.AuthorizeFolder("/Team");
     options.Conventions.AuthorizeFolder("/Reports");
+    options.Conventions.AuthorizeFolder("/Events");
 });
 
 // ── Rate Limiting ─────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Invite> Invites => Set<Invite>();
+    public DbSet<KafkaEvent> KafkaEvents => Set<KafkaEvent>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -154,6 +155,28 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 .WithMany(o => o.Invites)
                 .HasForeignKey(i => i.OrganizationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── KafkaEvent ────────────────────────────────────────────────────────
+        // Read-only table written by the kafka-consumer microservice.
+        // All IDs are stored as text (Prisma convention). OrganizationId is Guid
+        // in .NET but text in the DB — requires HasConversion<string>().
+        // AssetId and ActorId are also text in the DB (stored as string here).
+        modelBuilder.Entity<KafkaEvent>(e =>
+        {
+            e.ToTable("kafka_events");
+            e.HasKey(k => k.Id);
+            e.Property(k => k.Id).HasColumnName("id").HasConversion<string>();
+            e.Property(k => k.OrganizationId).HasColumnName("organizationId").HasConversion<string>();
+            e.Property(k => k.AssetId).HasColumnName("assetId").IsRequired();
+            e.Property(k => k.AssetName).HasColumnName("assetName").IsRequired();
+            e.Property(k => k.PreviousStatus).HasColumnName("previousStatus").IsRequired();
+            e.Property(k => k.NewStatus).HasColumnName("newStatus").IsRequired();
+            e.Property(k => k.ActorId).HasColumnName("actorId").IsRequired();
+            e.Property(k => k.OccurredAt).HasColumnName("occurredAt");
+            e.Property(k => k.CreatedAt).HasColumnName("createdAt");
+            e.HasIndex(k => k.OrganizationId);
+            e.HasIndex(k => new { k.OrganizationId, k.OccurredAt });
         });
     }
 }
