@@ -56,7 +56,7 @@ Both repos implement **exactly the same product features**. When a feature is ad
 | ------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Multi-tenancy             | All queries scoped by `organizationId` from verified session cookie                                  |
 | RBAC                      | `SUPERADMIN > ORG_MANAGER > ASSET_MANAGER > VIEWER`                                                  |
-| Auto org approval         | Auto-approve if daily approvals < 5 AND total active orgs < 50                                       |
+| Auto org approval         | All new orgs are auto-approved on registration (limits removed)                                      |
 | Asset CRUD                | Create/read/update/delete with status: `AVAILABLE / IN_USE / MAINTENANCE / RETIRED`                  |
 | Asset trial limit         | 100 assets per org; enforced on create and CSV import                                                |
 | Asset CSV import          | Bulk import; stops at trial limit; returns created/skipped/limitReached/errors                       |
@@ -71,6 +71,8 @@ Both repos implement **exactly the same product features**. When a feature is ad
 **When working in this repo (NexusCoreDotNet):** After completing any feature change, propagate it to NexusCoreJS (same session), and if the change affects UI/frontend behaviour, also update NexusCoreAndroid, NexusCoreReact, and NexusCoreIOS. Backend-only changes do not require client app changes.
 
 **When working in NexusCoreJS:** Same rule applies in reverse — propagate to NexusCoreDotNet.
+
+**Cross-repo check rule:** At the start of every task, read the relevant files in all sister repos to check whether an equivalent change has already been made there. If it has, apply the same change here. If this repo is ahead, propagate to the others. Never assume parity — always verify by reading the files.
 
 ## Project Structure
 
