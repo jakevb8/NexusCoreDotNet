@@ -190,7 +190,11 @@ builder.Services.AddCors(options =>
 });
 
 // ── Controllers (REST API) ────────────────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(opts =>
+{
+    opts.JsonSerializerOptions.PropertyNamingPolicy        = System.Text.Json.JsonNamingPolicy.CamelCase;
+    opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+});
 
 // ── HTTP Client ───────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient("Resend");
