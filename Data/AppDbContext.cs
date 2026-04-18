@@ -120,8 +120,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                     v => v.RootElement.GetRawText(),
                     v => JsonDocument.Parse(v, (JsonDocumentOptions)default));
             e.Property(al => al.Timestamp).HasColumnName("timestamp");
+            // Plain text column (no FK) — stores the org ID for org-level events
+            // so they survive after the organization row is deleted.
+            e.Property(al => al.OrganizationId).HasColumnName("organizationId");
             e.HasIndex(al => al.ActorId);
             e.HasIndex(al => al.AssetId);
+            e.HasIndex(al => al.OrganizationId);
             e.HasIndex(al => al.Timestamp);
             e.HasOne(al => al.Actor)
                 .WithMany(u => u.AuditLogs)

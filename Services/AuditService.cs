@@ -18,7 +18,8 @@ public class AuditService
         Guid actorId,
         Guid? assetId,
         object? before,
-        object? after)
+        object? after,
+        string? organizationId = null)
     {
         var changes = JsonDocument.Parse(JsonSerializer.Serialize(new { before, after }));
 
@@ -27,6 +28,7 @@ public class AuditService
             Action = action,
             ActorId = actorId,
             AssetId = assetId,
+            OrganizationId = organizationId,
             Changes = changes,
             Timestamp = DateTime.UtcNow
         };

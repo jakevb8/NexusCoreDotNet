@@ -12,13 +12,15 @@ public class AuthService
 {
     private readonly AppDbContext _db;
     private readonly IFirebaseAuthService _firebase;
+    private readonly AuditService _audit;
     private const int AutoApproveDailyLimit = 5;
     private const int AutoApproveTotalLimit = 50;
 
-    public AuthService(AppDbContext db, IFirebaseAuthService firebase)
+    public AuthService(AppDbContext db, IFirebaseAuthService firebase, AuditService audit)
     {
         _db = db;
         _firebase = firebase;
+        _audit = audit;
     }
 
     /// <summary>
@@ -191,7 +193,8 @@ public class AuthService
     /// <summary>
     /// Delete the calling user's account:
     ///   1. Delete the user row (EF cascade nulls AuditLog.ActorId via DB constraint).
-    ///   2. If they were the last member of their org, delete the org too
+    ///   2. If they were the last member of their org, write an ORG_DELETED audit log
+    ///      entry (before deletion so ActorId is still valid), then delete the org
     ///      (cascades assets, invites).
     ///   3. Delete the Firebase Auth record (best-effort).
     /// </summary>
@@ -202,13 +205,32 @@ public class AuthService
 
         var remainingMembers = await _db.Users.CountAsync(u => u.OrganizationId == user.OrganizationId);
 
-        _db.Users.Remove(user);
-
         if (remainingMembers == 1)
         {
-            // This user was the last member — wipe the org and all its data.
+            // Fetch org details before deletion for the audit log.
             var org = await _db.Organizations.FindAsync(user.OrganizationId);
+
+            // Write the audit log before removing rows so ActorId FK is still valid.
+            await _audit.LogAsync(
+                action: "ORG_DELETED",
+                actorId: userId,
+                assetId: null,
+                before: new
+                {
+                    organizationId = user.OrganizationId.ToString(),
+                    organizationName = org?.Name,
+                    actorEmail = user.Email,
+                },
+                after: (object?)null,
+                organizationId: user.OrganizationId.ToString());
+
+            _db.Users.Remove(user);
+
             if (org != null) _db.Organizations.Remove(org);
+        }
+        else
+        {
+            _db.Users.Remove(user);
         }
 
         await _db.SaveChangesAsync();

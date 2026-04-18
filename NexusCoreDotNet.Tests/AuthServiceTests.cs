@@ -22,7 +22,7 @@ public class AuthServiceTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
         _firebase = Substitute.For<IFirebaseAuthService>();
-        _sut = new AuthService(_db, _firebase);
+        _sut = new AuthService(_db, _firebase, new AuditService(_db));
     }
 
     public void Dispose() => _db.Dispose();
