@@ -1,0 +1,78 @@
+@page
+@model NexusCoreDotNet.Pages.Settings.IndexModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="page-header">
+    <h2>Settings</h2>
+    <p>Manage your account preferences</p>
+</div>
+
+<!-- Account info -->
+<div class="card border-0 shadow-sm mb-4" style="max-width:600px;">
+    <div class="card-header">
+        <h6 class="fw-semibold mb-0">Account</h6>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0" style="font-size:.875rem;">
+            <dt class="col-sm-4 text-muted fw-normal">Name</dt>
+            <dd class="col-sm-8 fw-medium">@(Model.DisplayName ?? "—")</dd>
+
+            <dt class="col-sm-4 text-muted fw-normal">Email</dt>
+            <dd class="col-sm-8 fw-medium">@Model.Email</dd>
+
+            <dt class="col-sm-4 text-muted fw-normal">Role</dt>
+            <dd class="col-sm-8 fw-medium">@Model.Role.ToString().Replace("_", " ")</dd>
+
+            <dt class="col-sm-4 text-muted fw-normal mb-0">Organization</dt>
+            <dd class="col-sm-8 fw-medium mb-0">@Model.OrgName</dd>
+        </dl>
+    </div>
+</div>
+
+<!-- Danger zone -->
+<div class="card border-danger shadow-sm" style="max-width:600px;">
+    <div class="card-header border-danger bg-white">
+        <h6 class="fw-semibold text-danger mb-0">Danger Zone</h6>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3" style="font-size:.875rem;">
+            Permanently delete your account and all associated data. This action cannot be undone.
+        </p>
+        <button type="button" class="btn btn-outline-danger btn-sm"
+                data-bs-toggle="modal" data-bs-target="#deleteModal">
+            Delete Account
+        </button>
+    </div>
+</div>
+
+<!-- Confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+        <div class="modal-content rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-semibold">Delete your account?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2" style="font-size:.875rem;">This will permanently delete:</p>
+                <ul class="text-muted mb-3" style="font-size:.875rem;">
+                    <li>Your user profile</li>
+                    <li>
+                        Your organization <strong>@Model.OrgName</strong> and all its data,
+                        if you are the last member
+                    </li>
+                    <li>All associated assets, audit logs, and invites</li>
+                </ul>
+                <p class="fw-medium text-danger mb-0" style="font-size:.875rem;">This cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" asp-page-handler="DeleteAccount" class="m-0">
+                    <button type="submit" class="btn btn-danger btn-sm">Yes, delete my account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
