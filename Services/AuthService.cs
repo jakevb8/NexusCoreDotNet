@@ -200,8 +200,13 @@ public class AuthService
     /// </summary>
     public async Task DeleteAccountAsync(Guid userId)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId)
-            ?? throw new KeyNotFoundException("User not found");
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+        {
+            // User is already gone from the DB (e.g. deleted via another client).
+            // Nothing to delete — return cleanly so the caller can sign out the cookie.
+            return;
+        }
 
         var remainingMembers = await _db.Users.CountAsync(u => u.OrganizationId == user.OrganizationId);
 
