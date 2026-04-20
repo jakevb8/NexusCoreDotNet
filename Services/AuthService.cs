@@ -200,7 +200,7 @@ public class AuthService
     /// </summary>
     public async Task DeleteAccountAsync(Guid userId)
     {
-        var user = await _db.Users.FindAsync(userId)
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new KeyNotFoundException("User not found");
 
         var remainingMembers = await _db.Users.CountAsync(u => u.OrganizationId == user.OrganizationId);
